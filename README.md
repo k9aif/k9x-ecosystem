@@ -142,16 +142,44 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### Step 4 — Confirm the environment
+### Step 4 — Edit `.env` — set the absolute framework path
 
-Edit `.env` and verify `K9_FRAMEWORK_PATH` points to your `k9-aif-framework` folder:
+Open `.env` and set `K9_FRAMEWORK_PATH` to the **absolute path** of your `k9-aif-framework` clone. Do not use `~` — use the full path:
 
 ```bash
-cat .env
-# K9_FRAMEWORK_PATH="/Users/you/k9-aif-framework"
+# correct
+K9_FRAMEWORK_PATH="/Users/you/k9-aif-framework"
+
+# wrong — ~ is not expanded when .env is sourced
+K9_FRAMEWORK_PATH="~/k9-aif-framework"
 ```
 
-### Step 5 — Run the scaffold as-is
+Also set `K9_ENV=development` to allow agents to run without a governance pipeline:
+
+```bash
+K9_ENV=development
+```
+
+### Step 5 — Edit `config/config.yaml` — point to your LLM
+
+Open `config/config.yaml` and set `base_url` under `inference.llm_factory` to your Ollama instance:
+
+```yaml
+inference:
+  llm_factory:
+    backend: ollama
+    base_url: "http://localhost:11434"       # local Ollama
+    # base_url: "http://192.168.1.x:11434"  # remote Ollama on your network
+```
+
+Make sure Ollama is running and the models listed under `models:` are pulled:
+
+```bash
+ollama pull llama3.2:1b
+ollama pull granite3-dense:2b
+```
+
+### Step 6 — Run the scaffold as-is
 
 The generated stubs are runnable without any implementation changes. Run the smoke test to confirm the environment is wired correctly before writing any agent logic:
 
@@ -159,7 +187,7 @@ The generated stubs are runnable without any implementation changes. Run the smo
 ./run.sh
 ```
 
-A successful run confirms Python path, framework imports, and agent wiring are all correct. You should see each agent execute and return an empty result — no errors.
+A successful run confirms Python path, framework imports, and agent wiring are all correct. You should see each agent execute — with Ollama running, agents will return real LLM output.
 
 ### Step 6 — Implement in VS Code + Claude Code
 
