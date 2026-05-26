@@ -1,5 +1,7 @@
 # k9x_inspector
 
+> **🚧 Work in progress** — not yet implemented.
+
 **Runtime Inspector for K9-AIF Systems**
 
 k9x_inspector is a browser-based inspection UI for running K9-AIF deployments. It connects to live infrastructure (PostgreSQL, Neo4j, Kafka) to surface execution traces, routing decisions, governance audit trails, and architecture topology.
