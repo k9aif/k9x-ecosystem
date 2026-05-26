@@ -14,90 +14,64 @@ No LLM required. Fully air-gapped. Works with Podman or Docker.
 
 ---
 
-## Install locally
-
-### Step 1 — Clone the repo
-
-```bash
-git clone https://github.com/k9aif/k9x-ecosystem.git
-cd k9x-ecosystem
-```
-
----
-
-### Option A — Container (recommended, no build needed)
+## Quick start — no git clone needed
 
 Requires [Podman](https://podman.io/docs/installation) or [Docker](https://docs.docker.com/get-docker/).
 
-#### Step 2 — Run the Studio
-
 ```bash
-./deployment/run-local.sh
+mkdir -p ~/k9x-studio-working
+
+podman run -d \
+  --name k9x_studio \
+  -p 8080:8080 \
+  -e K9X_PROJECTS_ROOT="/k9x/projects" \
+  -v ~/k9x-studio-working:/k9x/projects:Z \
+  ghcr.io/k9aif/k9x-studio:latest
 ```
 
-This pulls `ghcr.io/k9aif/k9x-studio:latest` and starts the Studio. Generated project scaffolds land in `~/k9x-studio-working/k9_projects/` on your machine.
+Open **http://localhost:8080** — Studio opens directly, no setup required.
 
-Use a custom folder if you prefer:
+Generated project scaffolds land in `~/k9x-studio-working/k9_projects/` on your machine.
 
-```bash
-K9X_HOST_PROJECTS=~/my-projects ./deployment/run-local.sh
-```
-
-#### Step 3 — Open the Studio
-
-```
-http://localhost:8080
-```
-
-Studio opens directly — no setup required. Fill in your project details and start designing.
+> **Docker users:** replace `podman` with `docker` and drop the `:Z` flag from the volume mount.
 
 ---
 
-### Option B — Run from source
-
-Requires Python 3.11+ and Node.js 20+.
-
-#### Step 2 — Clone the K9-AIF Framework
+## Stop / restart
 
 ```bash
-git clone https://github.com/k9aif/k9-aif-framework.git
+podman stop k9x_studio    # pause
+podman start k9x_studio   # resume
 ```
 
-#### Step 3 — Set up the Python backend
+To pull the latest image and restart fresh:
 
 ```bash
-cd k9x_studio
-python3 -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+podman stop k9x_studio && podman rm k9x_studio
+podman pull ghcr.io/k9aif/k9x-studio:latest
+podman run -d --name k9x_studio -p 8080:8080 \
+  -e K9X_PROJECTS_ROOT="/k9x/projects" \
+  -v ~/k9x-studio-working:/k9x/projects:Z \
+  ghcr.io/k9aif/k9x-studio:latest
 ```
 
-#### Step 4 — Set up the React frontend
+---
+
+## Custom port or working folder
 
 ```bash
-cd frontend
-npm install
+# Custom port
+podman run -d --name k9x_studio -p 9090:8080 \
+  -e K9X_PROJECTS_ROOT="/k9x/projects" \
+  -v ~/k9x-studio-working:/k9x/projects:Z \
+  ghcr.io/k9aif/k9x-studio:latest
+
+# Custom folder
+podman run -d --name k9x_studio -p 8080:8080 \
+  -e K9X_PROJECTS_ROOT="/k9x/projects" \
+  -v ~/my-projects:/k9x/projects:Z \
+  ghcr.io/k9aif/k9x-studio:latest
 ```
-
-#### Step 5 — Start both servers
-
-Terminal 1 — backend:
-
-```bash
-cd k9x_studio
-source .venv/bin/activate
-K9X_GENERATOR_TEMPLATES_DIR=../k9-aif-framework/generator/templates \
-  uvicorn backend.main:app --host 0.0.0.0 --port 8080 --reload
-```
-
-Terminal 2 — frontend:
-
-```bash
-cd k9x_studio/frontend
-npm run dev
-```
-
-Open **http://localhost:5173**
 
 ---
 
@@ -128,27 +102,11 @@ Your project lands in `~/k9x-studio-working/k9_projects/<your-project>/` with:
 └── agents/            ← Python stubs ready to implement
 ```
 
+Move this folder alongside your `k9-aif-framework` clone. Set the **k9-aif-framework path on your machine** field in Project Info — it gets written into the generated `.env` so your project can find the framework at runtime.
+
 ### Implement in VS Code + Claude Code
 
 Open the project folder in VS Code, launch Claude Code, and the `CLAUDE.md` guides it through the K9-AIF patterns automatically.
-
----
-
-## Custom port or working folder
-
-```bash
-PORT=9090 ./deployment/run-local.sh
-K9X_HOST_PROJECTS=/my/projects ./deployment/run-local.sh
-```
-
-## Stop / restart
-
-```bash
-podman stop k9x_studio    # pause
-podman start k9x_studio   # resume
-```
-
-Re-run `run-local.sh` any time to pull the latest image and restart with a fresh container.
 
 ---
 
@@ -166,11 +124,46 @@ Re-run `run-local.sh` any time to pull the latest image and restart with a fresh
 
 ---
 
+## Run from source (optional)
+
+For contributors or local development. Requires Python 3.11+ and Node.js 20+.
+
+```bash
+git clone https://github.com/k9aif/k9x-ecosystem.git
+git clone https://github.com/k9aif/k9-aif-framework.git
+cd k9x-ecosystem/k9x_studio
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cd frontend && npm install && cd ..
+```
+
+Terminal 1 — backend:
+
+```bash
+cd k9x_studio
+source .venv/bin/activate
+K9X_GENERATOR_TEMPLATES_DIR=../k9-aif-framework/generator/templates \
+  uvicorn backend.main:app --host 0.0.0.0 --port 8080 --reload
+```
+
+Terminal 2 — frontend:
+
+```bash
+cd k9x_studio/frontend
+npm run dev
+```
+
+Open **http://localhost:5173**
+
+---
+
 ## Self-hosted deployment (any Podman server)
 
 Deploy to any SSH-accessible machine running Podman — Linux, Mac, or a cloud VM.
 
 ```bash
+git clone https://github.com/k9aif/k9x-ecosystem.git
+cd k9x-ecosystem
 REMOTE_HOST=your-server REMOTE_USER=you ./deployment/deploy-remote.sh
 ```
 
