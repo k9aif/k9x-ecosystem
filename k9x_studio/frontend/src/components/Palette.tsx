@@ -321,13 +321,25 @@ export function Palette({ onDragStart, onExport, exporting }: PaletteProps) {
                   key={t.id}
                   className="palette-template-card"
                   title={t.description.slice(0, 120) + '…'}
-                  onClick={() => {
-                    setProject({
+                  onClick={async () => {
+                    const updated = {
                       ...project,
                       project_name: t.name,
                       domain: t.domain,
                       description: t.description,
-                    });
+                    };
+                    setProject(updated);
+                    setTab('components');
+                    setGenerating(true);
+                    try {
+                      const res = await fetch('/api/suggest', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(updated),
+                      });
+                      const data = await res.json();
+                      if (data.suggestion) buildCanvas(data.suggestion);
+                    } catch { /* keep canvas */ }
+                    finally { setGenerating(false); }
                   }}
                 >
                   <span className="template-icon">{t.icon}</span>
