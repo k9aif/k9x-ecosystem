@@ -296,8 +296,12 @@ def generate_to_disk(project: ProjectDef):
 
     zip_buf = generate_scaffold(project.model_dump())
 
+    import os
     with zipfile.ZipFile(zip_buf, "r") as zf:
         zf.extractall(out_dir)
+
+    for sh in out_dir.rglob("*.sh"):
+        sh.chmod(0o755)
 
     return {"status": "ok", "path": str(out_dir)}
 
