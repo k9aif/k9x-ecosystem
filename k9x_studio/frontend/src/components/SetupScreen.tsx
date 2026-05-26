@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useStore } from '../store';
 
 type CloneState = 'idle' | 'cloning' | 'done' | 'error';
+type VerifyState = 'idle' | 'checking' | 'not_found' | 'cloning' | 'done' | 'error';
 
 const FRAMEWORK_REPO = 'https://github.com/k9aif/k9-aif-framework.git';
 
@@ -39,13 +40,55 @@ export function SetupScreen() {
   // ── Option A: already have it ─────────────────────────────────
   const [existingPath, setExistingPath] = useState('');
   const [pathError, setPathError] = useState('');
+  const [verifyState, setVerifyState] = useState<VerifyState>('idle');
+  const [verifyError, setVerifyError] = useState('');
+  const [resolvedPath, setResolvedPath] = useState('');
 
-  const handleUseExisting = () => {
-    const p = existingPath.trim();
-    if (!p) { setPathError('Enter the path to your k9-aif-framework folder'); return; }
+  const applyPath = (p: string) => {
     const base = p.endsWith('/') ? p : `${p}/`;
     setProject({ ...project, framework_path: p, project_folder: `${base}k9_projects/` });
     setScreen('studio');
+  };
+
+  const handleUseExisting = async () => {
+    const p = existingPath.trim();
+    if (!p) { setPathError('Enter the path to your k9-aif-framework folder'); return; }
+    setVerifyState('checking');
+    setPathError('');
+    try {
+      const res = await fetch('/api/setup/verify-framework', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: p }),
+      });
+      const data = await res.json();
+      setResolvedPath(data.path);
+      if (data.valid) {
+        applyPath(data.path);
+      } else {
+        setVerifyState('not_found');
+      }
+    } catch {
+      setVerifyState('idle');
+      setPathError('Could not verify path — check the server is running');
+    }
+  };
+
+  const handleCloneInPlace = async () => {
+    setVerifyState('cloning');
+    setVerifyError('');
+    try {
+      const res = await fetch('/api/setup/clone-framework', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target_path: resolvedPath, repo_url: FRAMEWORK_REPO }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail ?? 'Clone failed');
+      setVerifyState('done');
+      setTimeout(() => applyPath(data.path), 800);
+    } catch (err: any) {
+      setVerifyState('error');
+      setVerifyError(err.message ?? 'Clone failed');
+    }
   };
 
   // ── Option B: clone into a new folder ────────────────────────
@@ -111,8 +154,13 @@ export function SetupScreen() {
               className="setup-input"
               placeholder="~/path/to/k9-aif-framework"
               value={existingPath}
-              onChange={(e) => { setExistingPath(e.target.value); setPathError(''); }}
+              onChange={(e) => {
+                setExistingPath(e.target.value);
+                setPathError('');
+                setVerifyState('idle');
+              }}
               onKeyDown={(e) => e.key === 'Enter' && handleUseExisting()}
+              disabled={verifyState === 'checking' || verifyState === 'cloning' || verifyState === 'done'}
               autoFocus
             />
             <button
@@ -123,18 +171,56 @@ export function SetupScreen() {
                   const dir = await (window as any).showDirectoryPicker({ mode: 'read' });
                   setExistingPath(dir.name);
                   setPathError('');
+                  setVerifyState('idle');
                 } catch { /* cancelled */ }
               }}
             >⋯</button>
           </div>
+
           {pathError && <div className="setup-field-error">{pathError}</div>}
-          <button
-            className="setup-btn-primary"
-            onClick={handleUseExisting}
-            disabled={!existingPath.trim()}
-          >
-            Use this folder →
-          </button>
+
+          {verifyState === 'idle' && (
+            <button
+              className="setup-btn-primary"
+              onClick={handleUseExisting}
+              disabled={!existingPath.trim()}
+            >
+              Use this folder →
+            </button>
+          )}
+
+          {verifyState === 'checking' && (
+            <div className="setup-checking">⟳ Checking framework…</div>
+          )}
+
+          {verifyState === 'not_found' && (
+            <div className="setup-not-found">
+              <div className="setup-not-found-msg">
+                ⚠ k9-aif-framework not found at <code>{resolvedPath}</code>
+              </div>
+              <div className="setup-not-found-sub">Clone it there now?</div>
+              <div className="setup-not-found-actions">
+                <button className="setup-btn-primary" onClick={handleCloneInPlace}>
+                  Clone framework here →
+                </button>
+                <button className="setup-btn-ghost" onClick={() => setVerifyState('idle')}>
+                  Enter a different path
+                </button>
+              </div>
+            </div>
+          )}
+
+          {verifyState === 'cloning' && (
+            <div className="setup-checking">⟳ Cloning k9-aif-framework…</div>
+          )}
+
+          {verifyState === 'done' && (
+            <div className="setup-clone-ok">✓ Framework ready — opening Studio…</div>
+          )}
+
+          {verifyState === 'error' && (
+            <div className="setup-field-error">✕ {verifyError}</div>
+          )}
         </div>
 
         <div className="setup-or"><span>or</span></div>

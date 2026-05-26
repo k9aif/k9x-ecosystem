@@ -307,6 +307,21 @@ class CloneRequest(BaseModel):
     repo_url: str = "https://github.com/k9aif/k9-aif-framework.git"
 
 
+class VerifyRequest(BaseModel):
+    path: str
+
+
+@router.post("/setup/verify-framework")
+def verify_framework(req: VerifyRequest):
+    """Check whether a path contains a valid k9-aif-framework clone."""
+    raw = req.path.strip()
+    if not raw.startswith('/') and not raw.startswith('~'):
+        raw = f"~/{raw}"
+    target = Path(raw).expanduser().resolve()
+    valid = (target / "generator" / "templates").exists()
+    return {"valid": valid, "path": str(target)}
+
+
 @router.post("/setup/clone-framework")
 def clone_framework(req: CloneRequest):
     """

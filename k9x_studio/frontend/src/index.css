@@ -163,6 +163,30 @@ html, body, #root {
   font-size: 10px; color: #3a3a70; margin-bottom: 8px; line-height: 1.5;
 }
 .setup-clone-hint code { color: #6060a0; font-family: var(--font-mono); }
+.setup-checking {
+  font-size: 11px; color: #7070c0; margin-bottom: 8px;
+}
+.setup-not-found {
+  background: #1a1020; border: 1px solid #f59e0b44;
+  border-radius: 6px; padding: 10px 12px; margin-bottom: 8px;
+}
+.setup-not-found-msg {
+  font-size: 11px; color: #f59e0b; margin-bottom: 4px;
+}
+.setup-not-found-msg code { font-family: var(--font-mono); color: #a08840; }
+.setup-not-found-sub {
+  font-size: 11px; color: #6060a0; margin-bottom: 10px;
+}
+.setup-not-found-actions {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.setup-btn-ghost {
+  background: none; border: 1px solid #2a2a50; color: #5050a0;
+  border-radius: 5px; padding: 6px 12px; font-size: 11px;
+  cursor: pointer; transition: border-color 0.15s, color 0.15s;
+}
+.setup-btn-ghost:hover { border-color: #4040a0; color: #8080d0; }
+
 .setup-or {
   display: flex; align-items: center; gap: 10px;
   margin: 12px 0; color: #2a2a50; font-size: 11px;
