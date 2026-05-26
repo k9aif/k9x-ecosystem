@@ -161,12 +161,18 @@ def generate_scaffold(project: dict) -> io.BytesIO:
             add(f"{app_folder}/orchestrators/{to_snake(orch_name)}.py", orch_code)
 
         # ── config.yaml — reuse canonical generator template ─────────
-        config_yaml = _render("config_template.yaml.j2", {
+        import os as _os2
+        ollama_base_url = (
+            project.get("ollama_base_url", "").strip()
+            or _os2.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
+        )
+        config_yaml = _render("config.yaml.j2", {
             "app_name": app_name,
             "app_folder": app_folder,
             "author": author,
             "domain": domain,
             "timestamp": timestamp,
+            "ollama_base_url": ollama_base_url,
         })
         add(f"{app_folder}/config/config.yaml", config_yaml)
 
