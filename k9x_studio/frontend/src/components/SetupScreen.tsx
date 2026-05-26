@@ -6,21 +6,12 @@ type VerifyState = 'idle' | 'checking' | 'not_found' | 'cloning' | 'done' | 'err
 
 const FRAMEWORK_REPO = 'https://github.com/k9aif/k9-aif-framework.git';
 
-function dateSuffix(): string {
-  const d = new Date();
-  const yy = String(d.getFullYear()).slice(2);
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${yy}${mm}${dd}`;
-}
-
 function buildDefaultClonePath(projectsRoot: string): string {
-  const ds = dateSuffix();
   if (projectsRoot) {
     const base = projectsRoot.endsWith('/') ? projectsRoot : `${projectsRoot}/`;
-    return `${base}${ds}/k9-aif-framework`;
+    return `${base}k9-aif-framework`;
   }
-  return `~/${ds}/k9x/k9-aif-framework`;
+  return `~/k9-aif-framework`;
 }
 
 export function SetupScreen() {
