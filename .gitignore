@@ -2,7 +2,11 @@ __pycache__/
 *.pyc
 .env
 .DS_Store
+*.tar.gz
 
 # k9x_studio
 k9x_studio/frontend/node_modules/
 k9x_studio/frontend/dist/
+
+# local framework clone used by build.sh — not committed
+k9-aif-framework/

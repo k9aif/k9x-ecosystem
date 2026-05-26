@@ -4,11 +4,16 @@
 
 set -e
 
-POD_NAME="k9x-studio-pod"
-CONTAINER_NAME="k9x-studio"
+POD_NAME="k9x_ecosystem"
+CONTAINER_NAME="k9x_studio"
 IMAGE="${IMAGE:-k9x-studio:latest}"
 HOST_PORT="${PORT:-8080}"
 OLLAMA_URL="${OLLAMA_URL:-http://host.containers.internal:11434}"
+
+# Volume: host path → /k9x/projects inside the container
+# Override K9X_HOST_PROJECTS to mount a different host directory.
+K9X_HOST_PROJECTS="${K9X_HOST_PROJECTS:-/home/container_storage/volumes/k9x/projects}"
+K9X_PROJECTS_ROOT="/k9x/projects"
 
 cmd="${1:-start}"
 
@@ -34,6 +39,9 @@ start_pod() {
     --name "$POD_NAME" \
     -p "${HOST_PORT}:8080"
 
+  # Ensure host projects directory exists
+  mkdir -p "$K9X_HOST_PROJECTS"
+
   echo "[k9x-pod] Starting $CONTAINER_NAME (image: $IMAGE)…"
   podman run -d \
     --pod "$POD_NAME" \
@@ -41,6 +49,8 @@ start_pod() {
     --restart unless-stopped \
     -e OLLAMA_BASE_URL="$OLLAMA_URL" \
     -e K9X_GENERATOR_TEMPLATES_DIR=/app/generator/templates \
+    -e K9X_PROJECTS_ROOT="$K9X_PROJECTS_ROOT" \
+    -v "${K9X_HOST_PROJECTS}:${K9X_PROJECTS_ROOT}:Z" \
     "$IMAGE"
 
   echo ""

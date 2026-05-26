@@ -36,6 +36,7 @@ export interface NodeData extends Record<string, unknown> {
   routingStrategy?: string;
   retryPolicy?: string;
   system?: boolean;
+  collapsed?: boolean;
 }
 
 export interface ProjectMeta {
@@ -44,6 +45,8 @@ export interface ProjectMeta {
   domain: string;
   description: string;
   project_folder: string;
+  framework_path: string;
+  platforms: string[];
 }
 
 export type AppScreen = 'setup' | 'studio';

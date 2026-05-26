@@ -139,11 +139,10 @@ export function Canvas({ generating }: CanvasProps) {
             const bdy = best.position.y - position.y;
             return dist < Math.sqrt(bdx * bdx + bdy * bdy) ? n : best;
           });
-          onConnect({ source: nearest.id, target: id, sourceHandle: null, targetHandle: null });
-          // If orchestrator auto-connected to router, also wire kafka→orch
+          onConnect({ source: nearest.id, target: id, sourceHandle: 's-right', targetHandle: 't-left' });
           if (comp.type === 'orchestrator') {
             const kafka = nodes.find((n) => n.id === 'system-kafka');
-            if (kafka) onConnect({ source: 'system-kafka', target: id, sourceHandle: 's-bottom', targetHandle: 't-right' });
+            if (kafka) onConnect({ source: 'system-kafka', target: id, sourceHandle: 's-right', targetHandle: 't-left' });
           }
         }
       }
@@ -164,7 +163,7 @@ export function Canvas({ generating }: CanvasProps) {
       ) {
         const kafka = nodes.find((n) => n.id === 'system-kafka');
         if (kafka) {
-          onConnect({ source: 'system-kafka', target: conn.target, sourceHandle: 's-bottom', targetHandle: 't-right' });
+          onConnect({ source: 'system-kafka', target: conn.target, sourceHandle: 's-right', targetHandle: 't-left' });
         }
       }
     },

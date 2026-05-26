@@ -12,6 +12,23 @@ export function Inspector() {
   const { nodes, selectedNodeId, updateNodeData } = useStore();
   const node = nodes.find((n) => n.id === selectedNodeId);
 
+  const footer = (
+    <div className="inspector-footer">
+      <div className="inspector-footer-title">Continue in your IDE</div>
+      <div className="inspector-footer-body">
+        Once the scaffold is generated, take the project to
+        <span className="inspector-footer-tool"> VS Code + Claude Code</span> to implement agent logic.
+      </div>
+      <div className="inspector-footer-links">
+        <a href="https://k9x.ai" target="_blank" rel="noopener noreferrer">k9x.ai</a>
+        <span className="inspector-footer-dot">·</span>
+        <a href="https://k9x.ai/examples" target="_blank" rel="noopener noreferrer">Examples</a>
+        <span className="inspector-footer-dot">·</span>
+        <a href="https://k9x.ai/blog" target="_blank" rel="noopener noreferrer">Blog</a>
+      </div>
+    </div>
+  );
+
   if (!node) {
     return (
       <aside className="inspector empty">
@@ -22,6 +39,7 @@ export function Inspector() {
           <div className="inspector-empty-icon">◎</div>
           <p>Select a node to configure it</p>
         </div>
+        {footer}
       </aside>
     );
   }
@@ -197,6 +215,7 @@ export function Inspector() {
           <code className="inspector-abb-code">{data.abbClass}</code>
         </div>
       </div>
+      {footer}
     </aside>
   );
 }

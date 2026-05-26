@@ -126,9 +126,12 @@ Return ONLY valid JSON.
 
     default = _default_suggestion(req.project_name, req.domain)
 
+    import os
+    ollama_base = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/")
+
     try:
         resp = http.post(
-            "http://192.168.1.98:11434/api/generate",
+            f"{ollama_base}/api/generate",
             json={"model": "granite3-dense:2b", "prompt": prompt, "stream": False},
             timeout=30,
         )
@@ -173,13 +176,38 @@ def _default_suggestion(project_name: str, domain: str) -> dict:
 @router.post("/bpmn/import")
 async def bpmn_import(file: UploadFile = File(...)):
     """
-    Parse a BPMN 2.0 file (IBM BlueWorks Live, Camunda, Bizagi, etc.)
-    and return a K9-AIF architecture suggestion.
+    Parse a BPMN 2.0 file or IBM BlueWorks Live ZIP export.
+    ZIP: skips .xsd and Glossaries.bpmn, parses the main process .bpmn.
     """
-    if not file.filename or not file.filename.lower().endswith((".bpmn", ".xml")):
-        raise HTTPException(status_code=400, detail="Upload a .bpmn or .xml file")
+    import io as _io
 
-    content = (await file.read()).decode("utf-8", errors="replace")
+    fname = (file.filename or "").lower()
+    if not fname.endswith((".bpmn", ".xml", ".zip")):
+        raise HTTPException(status_code=400, detail="Upload a .bpmn, .xml, or .zip file")
+
+    raw = await file.read()
+
+    # ── Unzip if needed ────────────────────────────────────────────────────────
+    if fname.endswith(".zip"):
+        try:
+            with zipfile.ZipFile(_io.BytesIO(raw)) as zf:
+                candidates = [
+                    n for n in zf.namelist()
+                    if n.lower().endswith(".bpmn")
+                    and "glossar" not in n.lower()
+                ]
+                if not candidates:
+                    raise HTTPException(status_code=422,
+                        detail="No process .bpmn file found inside the ZIP")
+                # Prefer files that aren't just resources/participants
+                main = next(
+                    (c for c in candidates if "resource" not in c.lower()), candidates[0]
+                )
+                raw = zf.read(main)
+        except zipfile.BadZipFile:
+            raise HTTPException(status_code=422, detail="Not a valid ZIP file")
+
+    content = raw.decode("utf-8", errors="replace")
     try:
         suggestion = parse_bpmn(content)
     except ValueError as exc:
@@ -216,6 +244,8 @@ class ProjectDef(BaseModel):
     domain: str = ""
     description: str = ""
     project_folder: str = ""
+    framework_path: str = ""
+    platforms: List[str] = Field(default_factory=list)
     output_path: str = ""
     orchestrators: List[OrchestratorDef] = Field(default_factory=list)
     squads: List[SquadDef] = Field(default_factory=list)
@@ -258,3 +288,70 @@ def generate_to_disk(project: ProjectDef):
 @router.get("/health")
 def health():
     return {"status": "ok", "service": "k9x_studio"}
+
+
+@router.get("/config")
+def get_config():
+    """Return runtime configuration visible to the frontend."""
+    import os
+    return {
+        "projects_root": os.environ.get("K9X_PROJECTS_ROOT", ""),
+        "ollama_url": os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434"),
+    }
+
+
+# ── Framework setup ───────────────────────────────────────────────────────────
+
+class CloneRequest(BaseModel):
+    target_path: str
+    repo_url: str = "https://github.com/k9aif/k9-aif-framework.git"
+
+
+@router.post("/setup/clone-framework")
+def clone_framework(req: CloneRequest):
+    """
+    Clone k9-aif-framework into target_path.
+    If the directory already contains a valid clone, pull latest instead.
+    """
+    import subprocess
+
+    raw = req.target_path.strip()
+    # Relative paths → resolve from $HOME, not backend CWD
+    if not raw.startswith('/') and not raw.startswith('~'):
+        raw = f"~/{raw}"
+    target = Path(raw).expanduser().resolve()
+
+    try:
+        target.mkdir(parents=True, exist_ok=True)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Cannot create directory: {e}")
+
+    git_dir = target / ".git"
+    templates_dir = target / "generator" / "templates"
+    try:
+        if git_dir.exists() and templates_dir.exists():
+            # Already a valid framework clone — nothing to do
+            (target / "k9_projects").mkdir(exist_ok=True)
+            return {"status": "ok", "path": str(target), "note": "already_exists"}
+        elif git_dir.exists():
+            # Repo present but incomplete — pull to complete it
+            subprocess.run(
+                ["git", "-C", str(target), "pull", "--depth=1"],
+                check=True, capture_output=True, timeout=120,
+            )
+        else:
+            # Fresh clone
+            subprocess.run(
+                ["git", "clone", "--depth=1", req.repo_url, str(target)],
+                check=True, capture_output=True, timeout=180,
+            )
+    except subprocess.CalledProcessError as e:
+        stderr = e.stderr.decode() if e.stderr else ""
+        raise HTTPException(status_code=500, detail=f"git failed: {stderr.strip() or str(e)}")
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=504, detail="git clone timed out — check your network")
+
+    # Ensure k9_projects/ exists inside the framework folder
+    (target / "k9_projects").mkdir(exist_ok=True)
+
+    return {"status": "ok", "path": str(target)}

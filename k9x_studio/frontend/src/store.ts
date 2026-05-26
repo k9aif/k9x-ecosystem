@@ -12,6 +12,7 @@ import type {
   Connection,
 } from '@xyflow/react';
 import type { AppScreen, ProjectMeta, NodeData } from './types';
+import { applyHierarchyLayout } from './layout';
 
 interface Snapshot {
   nodes: Node<NodeData>[];
@@ -42,13 +43,16 @@ interface StudioStore {
   toggleTheme: () => void;
   undo: () => void;
   redo: () => void;
+  layoutCanvas: () => void;
+  toggleSquadCollapse: (squadId: string) => void;
+  collapseAllSquads: () => void;
 }
 
 const MAX_HISTORY = 50;
 
 export const useStore = create<StudioStore>((set) => ({
   screen: 'setup',
-  project: { project_name: '', author: '', domain: '', description: '', project_folder: '~/Documents/k9x_projects/' },
+  project: { project_name: '', author: '', domain: '', description: '', project_folder: '', framework_path: '', platforms: [] },
   nodes: [],
   edges: [],
   selectedNodeId: null,
@@ -174,5 +178,56 @@ export const useStore = create<StudioStore>((set) => ({
         edges: next.edges,
         selectedNodeId: null,
       };
+    }),
+
+  layoutCanvas: () =>
+    set((s) => ({
+      history: [...s.history, { nodes: s.nodes, edges: s.edges }].slice(-MAX_HISTORY),
+      future: [],
+      nodes: applyHierarchyLayout(s.nodes as Node<NodeData>[], s.edges),
+    })),
+
+  toggleSquadCollapse: (squadId: string) =>
+    set((s) => {
+      const squad = s.nodes.find((n) => n.id === squadId);
+      if (!squad) return s;
+      const nowCollapsed = !(squad.data as NodeData).collapsed;
+      const agentIds = new Set(
+        s.edges.filter((e) => e.source === squadId).map((e) => e.target)
+      );
+      return {
+        nodes: s.nodes.map((n) => {
+          if (n.id === squadId) return { ...n, data: { ...n.data, collapsed: nowCollapsed } };
+          if (agentIds.has(n.id)) return { ...n, hidden: nowCollapsed };
+          return n;
+        }),
+        edges: s.edges.map((e) => {
+          if (e.source === squadId && agentIds.has(e.target)) return { ...e, hidden: nowCollapsed };
+          return e;
+        }),
+      };
+    }),
+
+  collapseAllSquads: () =>
+    set((s) => {
+      const squadIds = s.nodes
+        .filter((n) => (n.data as NodeData).componentType === 'squad')
+        .map((n) => n.id);
+      if (squadIds.length === 0) return s;
+      let nodes = s.nodes;
+      let edges = s.edges;
+      squadIds.forEach((squadId) => {
+        const agentIds = new Set(edges.filter((e) => e.source === squadId).map((e) => e.target));
+        nodes = nodes.map((n) => {
+          if (n.id === squadId) return { ...n, data: { ...n.data, collapsed: true } };
+          if (agentIds.has(n.id)) return { ...n, hidden: true };
+          return n;
+        });
+        edges = edges.map((e) => {
+          if (e.source === squadId && agentIds.has(e.target)) return { ...e, hidden: true };
+          return e;
+        });
+      });
+      return { nodes, edges };
     }),
 }));

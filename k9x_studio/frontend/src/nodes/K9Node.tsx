@@ -1,6 +1,7 @@
 import type { NodeProps } from '@xyflow/react';
 import { Handle, Position } from '@xyflow/react';
 import type { NodeData } from '../types';
+import { useStore } from '../store';
 
 const ICONS: Record<string, string> = {
   router: '⇄',
@@ -20,8 +21,9 @@ const handleStyle = (color: string) => ({
   zIndex: 10,
 });
 
-export function K9Node({ data, selected }: NodeProps) {
+export function K9Node({ id, data, selected }: NodeProps) {
   const d = data as NodeData;
+  const { edges, toggleSquadCollapse } = useStore();
   const icon = ICONS[d.componentType] ?? '◉';
 
   if (d.system) {
@@ -97,6 +99,37 @@ export function K9Node({ data, selected }: NodeProps) {
         }}>
           {d.abbClass}
         </div>
+
+        {d.componentType === 'squad' && (() => {
+          const agentCount = edges.filter((e) => e.source === id).length;
+          if (agentCount === 0) return null;
+          const collapsed = !!d.collapsed;
+          return (
+            <button
+              style={{
+                marginTop: 8,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                background: collapsed ? `${d.color}22` : 'transparent',
+                border: `1px solid ${d.color}55`,
+                borderRadius: 4,
+                color: d.color,
+                fontSize: 10,
+                fontWeight: 600,
+                padding: '3px 7px',
+                cursor: 'pointer',
+                width: '100%',
+                justifyContent: 'center',
+                letterSpacing: '0.04em',
+              }}
+              onClick={(e) => { e.stopPropagation(); toggleSquadCollapse(id); }}
+              title={collapsed ? 'Expand agents' : 'Collapse agents'}
+            >
+              {collapsed ? '▶' : '▼'} {agentCount} agent{agentCount !== 1 ? 's' : ''}
+            </button>
+          );
+        })()}
       </div>
     </div>
   );

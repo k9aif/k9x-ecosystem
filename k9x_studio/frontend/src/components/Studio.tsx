@@ -53,7 +53,7 @@ function buildProjectPayload(
 export function Studio() {
   const {
     project, nodes, edges, clearCanvas, generating,
-    history, future, undo, redo,
+    history, future, undo, redo, layoutCanvas,
   } = useStore();
 
   // ── Keyboard shortcuts ───────────────────────────────────────
@@ -109,6 +109,7 @@ export function Studio() {
   // ── Export scaffold ──────────────────────────────────────────
   const [exporting, setExporting] = useState(false);
   const [exportMsg, setExportMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [scaffoldDone, setScaffoldDone] = useState<{ path: string } | null>(null);
 
   const handleExport = async () => {
     const payload = buildProjectPayload(project, nodes as Node<NodeData>[], edges);
@@ -116,15 +117,13 @@ export function Studio() {
     setExportMsg(null);
     try {
       if (project.project_folder.trim()) {
-        // Write directly to disk
         const res = await fetch('/api/generate-to-disk', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...payload, output_path: project.project_folder.trim() }),
         });
         if (!res.ok) throw new Error(await res.text());
         const data = await res.json();
-        setExportMsg({ ok: true, text: `Written to ${data.path}` });
-        setTimeout(() => setExportMsg(null), 5000);
+        setScaffoldDone({ path: data.path });
       } else {
         // Download ZIP
         const res = await fetch('/api/generate', {
@@ -139,6 +138,8 @@ export function Studio() {
         a.download = `${project.project_name.toLowerCase().replace(/\s+/g, '_')}_scaffold.zip`;
         a.click();
         URL.revokeObjectURL(url);
+        setExportMsg({ ok: true, text: 'ZIP downloaded' });
+        setTimeout(() => setExportMsg(null), 4000);
       }
     } catch (err) {
       setExportMsg({ ok: false, text: 'Export failed: ' + err });
@@ -161,7 +162,7 @@ export function Studio() {
       {/* ── Header ─────────────────────────────────────────── */}
       <header className="studio-header">
         <div className="header-left">
-          <span className="logo-k9">K9X</span>
+          <a className="logo-k9" href="https://k9x.ai" target="_blank" rel="noopener noreferrer">K9X</a>
           <span className="logo-studio">Studio</span>
           {project.project_name && (
             <>
@@ -174,6 +175,11 @@ export function Studio() {
 
         <div className="header-center">
           <span className="header-framework">k9-AIF Framework</span>
+          {project.project_folder && (
+            <span className="header-workdir" title={project.project_folder}>
+              Working folder: <code>{project.project_folder}</code>
+            </span>
+          )}
         </div>
 
         <div className="header-right">
@@ -190,6 +196,15 @@ export function Studio() {
             disabled={future.length === 0}
             title="Redo (⌘⇧Z)"
           >↪</button>
+
+          <div className="header-sep" />
+
+          <button
+            className="btn-icon"
+            onClick={layoutCanvas}
+            disabled={nodes.length === 0}
+            title="Auto-arrange layout (⊞)"
+          >⊞</button>
 
           <div className="header-sep" />
 
@@ -237,6 +252,32 @@ export function Studio() {
           <Inspector />
         </div>
       </div>
+
+      {/* ── Scaffold complete banner ────────────────────────────── */}
+      {scaffoldDone && (
+        <div className="scaffold-done-overlay" onClick={() => setScaffoldDone(null)}>
+          <div className="scaffold-done-card" onClick={(e) => e.stopPropagation()}>
+            <div className="scaffold-done-icon">✦</div>
+            <div className="scaffold-done-title">Scaffold Generated</div>
+            <div className="scaffold-done-path">{scaffoldDone.path}</div>
+            <div className="scaffold-done-body">
+              Your work in K9X Studio is complete.<br />
+              The project is ready — take it to your IDE to implement the agent logic.
+            </div>
+            <div className="scaffold-done-rec">
+              Recommended next step
+              <span className="scaffold-done-tool">VS Code + Claude Code</span>
+            </div>
+            <div className="scaffold-done-hint">
+              Open the project folder in VS Code, launch Claude Code,<br />
+              and the framework's <code>CLAUDE.md</code> will guide it through the K9-AIF patterns.
+            </div>
+            <button className="scaffold-done-btn" onClick={() => setScaffoldDone(null)}>
+              Back to Studio
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

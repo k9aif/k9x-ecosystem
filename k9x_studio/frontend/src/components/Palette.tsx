@@ -38,9 +38,17 @@ export function Palette({ onDragStart, onExport, exporting }: PaletteProps) {
   const [components, setComponents] = useState<PaletteComponent[]>([]);
   const [bpmnStatus, setBpmnStatus] = useState<BpmnStatus>({ state: 'idle' });
   const { project, setProject, clearCanvas, addNode, onConnect,
-          nodes, selectedNodeId, generating, setGenerating } = useStore();
+          nodes, selectedNodeId, generating, setGenerating, layoutCanvas, collapseAllSquads } = useStore();
 
-  const setField = (key: string, val: string) => setProject({ ...project, [key]: val });
+  const setField = (key: string, val: string) => {
+    const updated = { ...project, [key]: val };
+    // When framework_path changes, auto-set project_folder to {framework_path}/k9_projects/
+    if (key === 'framework_path' && val.trim()) {
+      const sep = val.trim().endsWith('/') ? '' : '/';
+      updated.project_folder = `${val.trim()}${sep}k9_projects/`;
+    }
+    setProject(updated);
+  };;
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId);
   const selectedType = selectedNode ? (selectedNode.data as NodeData).componentType : null;
@@ -78,15 +86,15 @@ export function Palette({ onDragStart, onExport, exporting }: PaletteProps) {
       const orchX = cx - 90 + oi * 300;
       addNode({ id: orchId, type: 'k9node', position: { x: orchX, y: 220 },
         data: { label: o.name, componentType: 'orchestrator' as ComponentType, color: COMPONENT_COLORS.orchestrator, abbClass: 'BaseOrchestrator', description: `Orchestrator for ${o.name}` } });
-      onConnect({ source: routerId, target: orchId, sourceHandle: null, targetHandle: null });
-      onConnect({ source: kafkaId, target: orchId, sourceHandle: 's-bottom', targetHandle: 't-right' });
+      onConnect({ source: routerId, target: orchId, sourceHandle: 's-right', targetHandle: 't-left' });
+      onConnect({ source: kafkaId, target: orchId, sourceHandle: 's-right', targetHandle: 't-left' });
 
       const orchSquads = suggestion.squads?.slice(oi, oi + 1) ?? [];
       orchSquads.forEach((sq: any) => {
         const squadId = uid2();
         addNode({ id: squadId, type: 'k9node', position: { x: orchX - 20, y: 400 },
           data: { label: sq.name, componentType: 'squad' as ComponentType, color: COMPONENT_COLORS.squad, abbClass: 'BaseSquad', description: `Squad: ${sq.name}` } });
-        onConnect({ source: orchId, target: squadId, sourceHandle: null, targetHandle: null });
+        onConnect({ source: orchId, target: squadId, sourceHandle: 's-right', targetHandle: 't-left' });
 
         const count = (sq.agents ?? []).length;
         const spacing = Math.min(210, 800 / Math.max(count, 1));
@@ -99,10 +107,15 @@ export function Palette({ onDragStart, onExport, exporting }: PaletteProps) {
           addNode({ id: agId, type: 'k9node', position: { x: startX + ai * spacing, y: 580 },
             data: { label: name, componentType: ntype as ComponentType, color: COMPONENT_COLORS[ntype], abbClass: ABB_MAP[atype] ?? 'BaseAgent',
               agentType: atype, model: def?.model ?? 'general', pattern: 'reasoning', description: def?.description ?? '' } });
-          onConnect({ source: squadId, target: agId, sourceHandle: null, targetHandle: null });
+          onConnect({ source: squadId, target: agId, sourceHandle: 's-right', targetHandle: 't-left' });
         });
       });
     });
+    // Auto-layout, then collapse all squads so default view is clean
+    setTimeout(() => {
+      layoutCanvas();
+      setTimeout(() => collapseAllSquads(), 60);
+    }, 50);
   };
 
   const handleGenerate = async () => {
@@ -179,11 +192,21 @@ export function Palette({ onDragStart, onExport, exporting }: PaletteProps) {
             })}
           </div>
 
-          <div className="palette-section-title">K9-AIF Hierarchy</div>
+          <div className="palette-section-title">
+            K9-AIF Hierarchy
+            <span className="palette-hint-icon" tabIndex={-1}>
+              ⓘ
+              <span className="palette-hint-tooltip">
+                Squad nodes start collapsed.<br />
+                Click <strong>▶ N agents</strong> on a squad to expand its agents.<br />
+                Click <strong>▼</strong> to collapse again.
+              </span>
+            </span>
+          </div>
           <div className="palette-hierarchy">
             <div className="hier-line" style={{ color: COMPONENT_COLORS.router }}>⇄ Router</div>
             <div className="hier-line hier-indent" style={{ color: COMPONENT_COLORS.orchestrator }}>└ ◈ Orchestrator</div>
-            <div className="hier-line hier-indent-2" style={{ color: COMPONENT_COLORS.squad }}>└ ◫ Squad</div>
+            <div className="hier-line hier-indent-2" style={{ color: COMPONENT_COLORS.squad }}>└ ◫ Squad  ▶</div>
             <div className="hier-line hier-indent-3" style={{ color: COMPONENT_COLORS.agent }}>└ ◉ Agent</div>
           </div>
         </>
@@ -197,11 +220,11 @@ export function Palette({ onDragStart, onExport, exporting }: PaletteProps) {
             <div className="palette-project-label">Import BPMN</div>
             <label className="palette-bpmn-label">
               <span className={`palette-bpmn-btn ${bpmnStatus.state === 'loading' ? 'palette-bpmn-loading' : ''}`}>
-                {bpmnStatus.state === 'loading' ? '⟳ Importing…' : '⬆ Browse for .bpmn / .xml'}
+                {bpmnStatus.state === 'loading' ? '⟳ Importing…' : '⬆ Browse for .bpmn / .xml / .zip'}
               </span>
               <input
                 type="file"
-                accept=".bpmn,.xml,application/xml,text/xml"
+                accept=".bpmn,.xml,.zip,application/xml,text/xml,application/zip"
                 style={{ display: 'none' }}
                 disabled={bpmnStatus.state === 'loading'}
                 onChange={async (e) => {
@@ -210,8 +233,8 @@ export function Palette({ onDragStart, onExport, exporting }: PaletteProps) {
                   if (!file) return;
 
                   const ext = file.name.split('.').pop()?.toLowerCase();
-                  if (ext !== 'bpmn' && ext !== 'xml') {
-                    setBpmnStatus({ state: 'error', msg: `"${file.name}" is not a .bpmn or .xml file` });
+                  if (ext !== 'bpmn' && ext !== 'xml' && ext !== 'zip') {
+                    setBpmnStatus({ state: 'error', msg: `"${file.name}" is not a .bpmn, .xml, or .zip file` });
                     return;
                   }
 
@@ -244,7 +267,7 @@ export function Palette({ onDragStart, onExport, exporting }: PaletteProps) {
               <div className="palette-bpmn-ok">✓ Imported: {bpmnStatus.name}</div>
             )}
             {bpmnStatus.state === 'idle' && (
-              <div className="palette-bpmn-hint">IBM BlueWorks Live · Camunda · Bizagi</div>
+              <div className="palette-bpmn-hint">IBM BlueWorks Live (ZIP) · Camunda · Bizagi</div>
             )}
           </div>
 
@@ -270,6 +293,62 @@ export function Palette({ onDragStart, onExport, exporting }: PaletteProps) {
                   <span className="template-name">{t.name}</span>
                 </button>
               ))}
+            </div>
+          </div>
+
+          <div className="palette-platforms">
+            <div className="palette-project-label">Platforms &amp; Frameworks</div>
+            <div className="platform-group-label">IBM watsonx</div>
+            <div className="platform-pills">
+              {([
+                { id: 'watsonx-assistant',   label: 'Assistant',   color: '#4589ff' },
+                { id: 'watsonx-orchestrate', label: 'Orchestrate', color: '#4589ff' },
+                { id: 'watsonx-governance',  label: 'Governance',  color: '#4589ff' },
+                { id: 'watsonx-data',        label: 'data',        color: '#4589ff' },
+              ] as const).map((p) => {
+                const active = project.platforms.includes(p.id);
+                return (
+                  <button
+                    key={p.id}
+                    className={`platform-pill ${active ? 'platform-pill-active' : ''}`}
+                    style={active ? { borderColor: p.color, color: p.color, background: `${p.color}18` } : {}}
+                    onClick={() => setProject({
+                      ...project,
+                      platforms: active
+                        ? project.platforms.filter((x) => x !== p.id)
+                        : [...project.platforms, p.id],
+                    })}
+                    title={`IBM watsonx ${p.label}`}
+                  >
+                    {active ? '✓ ' : ''}{p.label}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="platform-group-label" style={{ marginTop: 8 }}>Agent Frameworks</div>
+            <div className="platform-pills">
+              {([
+                { id: 'crewai',    label: 'CrewAI',    color: '#ff6b35' },
+                { id: 'langchain', label: 'LangChain', color: '#1cc88a' },
+              ] as const).map((p) => {
+                const active = project.platforms.includes(p.id);
+                return (
+                  <button
+                    key={p.id}
+                    className={`platform-pill ${active ? 'platform-pill-active' : ''}`}
+                    style={active ? { borderColor: p.color, color: p.color, background: `${p.color}18` } : {}}
+                    onClick={() => setProject({
+                      ...project,
+                      platforms: active
+                        ? project.platforms.filter((x) => x !== p.id)
+                        : [...project.platforms, p.id],
+                    })}
+                    title={p.label}
+                  >
+                    {active ? '✓ ' : ''}{p.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -316,6 +395,28 @@ export function Palette({ onDragStart, onExport, exporting }: PaletteProps) {
             {project.project_folder && (
               <div className="palette-folder-hint">→ <code>{project.project_folder}</code></div>
             )}
+            <div className="palette-project-sublabel">K9-AIF Framework Location</div>
+            <div className="palette-project-folder-row">
+              <input
+                className="palette-project-input palette-project-folder"
+                placeholder="~/path/to/k9-aif-framework"
+                value={project.framework_path}
+                onChange={(e) => setField('framework_path', e.target.value)}
+              />
+              <button
+                className="palette-browse-btn"
+                title="Browse for k9-aif-framework folder"
+                onClick={async () => {
+                  try {
+                    const dir = await (window as any).showDirectoryPicker({ mode: 'read' });
+                    setField('framework_path', dir.name);
+                  } catch { /* cancelled or unsupported */ }
+                }}
+              >⋯</button>
+            </div>
+            {project.framework_path && (
+              <div className="palette-folder-hint">→ <code>{project.framework_path}</code></div>
+            )}
           </div>
 
           <div className="palette-describe">
@@ -330,6 +431,9 @@ export function Palette({ onDragStart, onExport, exporting }: PaletteProps) {
               }
               rows={10}
             />
+            <div className="palette-no-llm-note">
+              ⊙ No LLM required — canvas, scaffold, and all generated artifacts are produced locally without internet or AI access.
+            </div>
           </div>
         </>
       )}
