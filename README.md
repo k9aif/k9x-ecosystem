@@ -156,7 +156,7 @@ cat .env
 The generated stubs are runnable without any implementation changes. Run the smoke test to confirm the environment is wired correctly before writing any agent logic:
 
 ```bash
-bash run.sh
+./run.sh
 ```
 
 A successful run confirms Python path, framework imports, and agent wiring are all correct. You should see each agent execute and return an empty result — no errors.

@@ -79,7 +79,14 @@ def generate_scaffold(project: dict) -> io.BytesIO:
     with zipfile.ZipFile(zip_buf, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
 
         def add(path: str, content: str):
-            zf.writestr(path, content)
+            info = zipfile.ZipInfo(path)
+            info.compress_type = zipfile.ZIP_DEFLATED
+            # Set executable bit for shell scripts
+            if path.endswith(".sh"):
+                info.external_attr = 0o755 << 16
+            else:
+                info.external_attr = 0o644 << 16
+            zf.writestr(info, content)
 
         # ── agents ────────────────────────────────────────────────────
         for agent_def in project.get("agents", []):
