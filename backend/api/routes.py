@@ -1,0 +1,234 @@
+# SPDX-License-Identifier: Apache-2.0
+# k9x_studio API routes
+
+from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field
+from typing import List, Optional
+import zipfile
+from pathlib import Path
+
+from backend.services.scaffold_service import generate_scaffold
+
+router = APIRouter()
+
+
+# ── Component palette ──────────────────────────────────────────────────────────
+
+PALETTE = [
+    {
+        "type": "router",
+        "label": "Router",
+        "abbClass": "K9EventRouter",
+        "color": "#6366f1",
+        "description": "Routes events by event_type to the correct orchestrator.",
+        "singleton": True,
+    },
+    {
+        "type": "orchestrator",
+        "label": "Orchestrator",
+        "abbClass": "BaseOrchestrator",
+        "color": "#8b5cf6",
+        "description": "Coordinates squad execution for a domain workflow.",
+    },
+    {
+        "type": "squad",
+        "label": "Squad",
+        "abbClass": "BaseSquad",
+        "color": "#0ea5e9",
+        "description": "Executes a defined flow of agents in sequence.",
+    },
+    {
+        "type": "agent",
+        "label": "Agent",
+        "abbClass": "BaseAgent",
+        "color": "#10b981",
+        "description": "One-shot agent: execute(payload) → dict.",
+    },
+    {
+        "type": "validation_loop",
+        "label": "Validation Loop",
+        "abbClass": "K9ValidationLoopAgent",
+        "color": "#f59e0b",
+        "description": "Iterative hypothesis-validate-reason loop agent.",
+    },
+    {
+        "type": "critic_actor",
+        "label": "Critic-Actor",
+        "abbClass": "K9CriticActorAgent",
+        "color": "#ef4444",
+        "description": "Generate-critique-refine-accept agent.",
+    },
+    {
+        "type": "guard",
+        "label": "Guard",
+        "abbClass": "BaseGovernance",
+        "color": "#64748b",
+        "description": "Governance / zero-trust guard.",
+    },
+]
+
+
+@router.get("/components")
+def get_components():
+    return {"components": PALETTE}
+
+
+# ── Architecture suggestion ────────────────────────────────────────────────────
+
+class SuggestRequest(BaseModel):
+    project_name: str
+    author: str = ""
+    domain: str = ""
+    description: str = ""
+
+
+@router.post("/suggest")
+def suggest(req: SuggestRequest):
+    """
+    Call Ollama to suggest an initial K9-AIF architecture based on project description.
+    Falls back to a sensible default if LLM is unavailable.
+    """
+    import json, re, requests as http
+
+    prompt = f"""You are a K9-AIF architect. Suggest a multi-agent architecture for this project.
+
+Project: {req.project_name}
+Domain: {req.domain}
+Description: {req.description}
+
+Return ONLY a JSON object — no explanation, no markdown, no code fences — with this exact structure:
+{{
+  "orchestrators": [
+    {{"name": "ExampleOrchestrator"}}
+  ],
+  "squads": [
+    {{"name": "ExampleSquad", "agents": ["AgentOne", "AgentTwo", "AgentThree"]}}
+  ],
+  "agents": [
+    {{"name": "AgentOne", "type": "BaseAgent", "model": "general", "description": "What this agent does"}},
+    {{"name": "AgentTwo", "type": "K9ValidationLoopAgent", "model": "reasoning", "description": "What this agent does"}},
+    {{"name": "AgentThree", "type": "BaseAgent", "model": "general", "description": "What this agent does"}}
+  ]
+}}
+
+Rules:
+- All agent names must end with "Agent"
+- Use K9ValidationLoopAgent for agents that need iterative verification or confidence scoring
+- Use K9CriticActorAgent for agents that generate and refine output (drafting, reports, contracts)
+- Use BaseAgent for simple one-shot classification or audit agents
+- Suggest 3-5 agents that make sense for the domain
+- Name everything based on the {req.domain} domain
+
+Return ONLY valid JSON.
+"""
+
+    default = _default_suggestion(req.project_name, req.domain)
+
+    try:
+        resp = http.post(
+            "http://192.168.1.98:11434/api/generate",
+            json={"model": "granite3-dense:2b", "prompt": prompt, "stream": False},
+            timeout=30,
+        )
+        raw = resp.json().get("response", "")
+        # strip markdown fences if present
+        raw = re.sub(r"```(?:json)?", "", raw).strip()
+        # extract first JSON object
+        match = re.search(r"\{.*\}", raw, re.DOTALL)
+        if match:
+            suggestion = json.loads(match.group())
+            # validate minimal structure
+            if "agents" in suggestion and "squads" in suggestion:
+                return {"suggestion": suggestion, "source": "llm"}
+    except Exception:
+        pass
+
+    return {"suggestion": default, "source": "default"}
+
+
+def _default_suggestion(project_name: str, domain: str) -> dict:
+    from backend.services.scaffold_service import to_pascal
+    prefix = to_pascal(project_name)
+    d = domain.strip().title() if domain else prefix
+    return {
+        "orchestrators": [{"name": f"{prefix}Orchestrator"}],
+        "squads": [{"name": f"{prefix}Squad", "agents": [
+            f"TriageAgent", f"ProcessingAgent", f"AuditAgent"
+        ]}],
+        "agents": [
+            {"name": "TriageAgent", "type": "BaseAgent", "model": "general",
+             "description": f"Triage and classify incoming {d} requests"},
+            {"name": "ProcessingAgent", "type": "K9ValidationLoopAgent", "model": "reasoning",
+             "description": f"Core {d} processing with iterative validation"},
+            {"name": "AuditAgent", "type": "BaseAgent", "model": "general",
+             "description": f"Audit and compliance check for {d} outcomes"},
+        ],
+    }
+
+
+# ── Project generation ─────────────────────────────────────────────────────────
+
+class AgentDef(BaseModel):
+    name: str
+    type: str = "BaseAgent"
+    model: str = "general"
+    pattern: str = "reasoning"
+    description: str = ""
+
+class SquadDef(BaseModel):
+    name: str
+    agents: List[str]
+
+class OrchestratorDef(BaseModel):
+    name: str
+    squad: str
+
+class ProjectDef(BaseModel):
+    project_name: str
+    author: str = ""
+    domain: str = ""
+    description: str = ""
+    project_folder: str = ""
+    output_path: str = ""
+    orchestrators: List[OrchestratorDef] = Field(default_factory=list)
+    squads: List[SquadDef] = Field(default_factory=list)
+    agents: List[AgentDef] = Field(default_factory=list)
+
+
+@router.post("/generate")
+def generate(project: ProjectDef):
+    zip_buf = generate_scaffold(project.model_dump())
+    filename = project.project_name.lower().replace(" ", "_") + "_scaffold.zip"
+    return StreamingResponse(
+        zip_buf,
+        media_type="application/zip",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
+@router.post("/generate-to-disk")
+def generate_to_disk(project: ProjectDef):
+    """Generate scaffold directly into a folder on the server's filesystem."""
+    output_path = (project.output_path or project.project_folder).strip()
+    if not output_path:
+        raise HTTPException(status_code=400, detail="output_path is required")
+
+    out_dir = Path(output_path).expanduser().resolve()
+    try:
+        out_dir.mkdir(parents=True, exist_ok=True)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Cannot create directory: {e}")
+
+    zip_buf = generate_scaffold(project.model_dump())
+
+    # Extract ZIP into target directory
+    with zipfile.ZipFile(zip_buf, "r") as zf:
+        zf.extractall(out_dir)
+
+    return {"status": "ok", "path": str(out_dir)}
+
+
+@router.get("/health")
+def health():
+    return {"status": "ok", "service": "k9x_studio"}
