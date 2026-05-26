@@ -263,6 +263,9 @@ if [ -z "${{K9_FRAMEWORK_PATH:-}}" ]; then
   exit 1
 fi
 
+# Expand ~ in case .env uses ~/path notation
+K9_FRAMEWORK_PATH="${{K9_FRAMEWORK_PATH/#\~/$HOME}}"
+
 export PYTHONPATH="$K9_FRAMEWORK_PATH:${{PYTHONPATH:-}}"
 echo "Using framework: $K9_FRAMEWORK_PATH"
 python "$SCRIPT_DIR/main.py" "$@"
