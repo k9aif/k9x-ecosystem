@@ -117,7 +117,51 @@ Your project lands in `~/k9x-studio-working/k9_projects/<your-project>/` with:
 
 Move this folder alongside your `k9-aif-framework` clone. Set the **k9-aif-framework path on your machine** field in Project Info — it gets written into the generated `.env` so your project can find the framework at runtime.
 
-### Implement in VS Code + Claude Code
+---
+
+## Developer prerequisites — after you generate the scaffold
+
+### Step 1 — Clone the K9-AIF Framework
+
+```bash
+git clone https://github.com/k9aif/k9-aif-framework.git ~/k9-aif-framework
+```
+
+### Step 2 — Move your scaffold alongside it
+
+```bash
+mv ~/k9x-studio-working/k9_projects/<your-project> ~/k9-aif-framework/k9_projects/
+cd ~/k9-aif-framework/k9_projects/<your-project>
+```
+
+### Step 3 — Set up the Python environment
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+### Step 4 — Confirm the environment
+
+Edit `.env` and verify `K9_FRAMEWORK_PATH` points to your `k9-aif-framework` folder:
+
+```bash
+cat .env
+# K9_FRAMEWORK_PATH="/Users/you/k9-aif-framework"
+```
+
+### Step 5 — Run the scaffold as-is
+
+The generated stubs are runnable without any implementation changes. Run the smoke test to confirm the environment is wired correctly before writing any agent logic:
+
+```bash
+bash run.sh
+```
+
+A successful run confirms Python path, framework imports, and agent wiring are all correct. You should see each agent execute and return an empty result — no errors.
+
+### Step 6 — Implement in VS Code + Claude Code
 
 Open the project folder in VS Code, launch Claude Code, and the `CLAUDE.md` guides it through the K9-AIF patterns automatically.
 
