@@ -27,6 +27,9 @@ interface PaletteProps {
   onDragStart: (e: React.DragEvent, component: PaletteComponent) => void;
   onExport: () => void;
   exporting: boolean;
+  onDownload?: () => void;
+  scaffoldReady?: boolean;
+  downloading?: boolean;
 }
 
 type PaletteTab = 'components' | 'project';
@@ -37,7 +40,7 @@ function slugify(s: string) {
   return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
 }
 
-export function Palette({ onDragStart, onExport, exporting }: PaletteProps) {
+export function Palette({ onDragStart, onExport, exporting, onDownload, scaffoldReady, downloading }: PaletteProps) {
   const [tab, setTab] = useState<PaletteTab>('project');
   const [components, setComponents] = useState<PaletteComponent[]>([]);
   const [bpmnStatus, setBpmnStatus] = useState<BpmnStatus>({ state: 'idle' });
@@ -530,6 +533,15 @@ export function Palette({ onDragStart, onExport, exporting }: PaletteProps) {
         >
           {exporting ? '⟳  Writing…' : '⬆  Generate Scaffold'}
         </button>
+        {scaffoldReady && onDownload && (
+          <button
+            className="palette-download-btn"
+            onClick={onDownload}
+            disabled={downloading}
+          >
+            {downloading ? '⟳  Downloading…' : '⬇  Download Generated Code'}
+          </button>
+        )}
       </div>
     </aside>
   );

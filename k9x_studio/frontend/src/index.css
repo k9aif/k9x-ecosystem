@@ -1117,6 +1117,23 @@ html, body, #root {
 .scaffold-done-hint code {
   color: #7070b0; font-family: var(--font-mono);
 }
+.scaffold-done-actions {
+  display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap;
+}
+.scaffold-download-btn {
+  background: #f97316; border: none;
+  border-radius: 8px; padding: 10px 22px;
+  color: #fff; font-size: 13px; font-weight: 700; cursor: pointer;
+  letter-spacing: 0.02em;
+  transition: all 0.15s;
+  box-shadow: 0 4px 14px #f9731644;
+}
+.scaffold-download-btn:hover:not(:disabled) {
+  background: #ea6c10; transform: translateY(-1px);
+  box-shadow: 0 6px 20px #f9731666;
+}
+.scaffold-download-btn:active:not(:disabled) { transform: scale(0.98); }
+.scaffold-download-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .scaffold-done-btn {
   background: transparent; border: 1px solid #2a2a50;
   border-radius: 8px; padding: 9px 28px;
@@ -1126,6 +1143,21 @@ html, body, #root {
 .scaffold-done-btn:hover {
   border-color: #6366f1; color: #a5b4fc; background: #1a1a30;
 }
+.palette-download-btn {
+  width: 100%; padding: 10px 0;
+  background: #f97316; border: none; border-radius: 8px;
+  color: #fff; font-size: 13px; font-weight: 700; cursor: pointer;
+  letter-spacing: 0.02em;
+  transition: all 0.15s;
+  box-shadow: 0 4px 14px #f9731633;
+  margin-top: 2px;
+}
+.palette-download-btn:hover:not(:disabled) {
+  background: #ea6c10; transform: translateY(-1px);
+  box-shadow: 0 6px 18px #f9731655;
+}
+.palette-download-btn:active:not(:disabled) { transform: scale(0.98); }
+.palette-download-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
 /* ── Right-click context menu ────────────────────────────────── */
 

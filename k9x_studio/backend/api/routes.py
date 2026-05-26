@@ -306,6 +306,28 @@ def generate_to_disk(project: ProjectDef):
     return {"status": "ok", "path": str(out_dir)}
 
 
+@router.post("/scaffold/download")
+def download_scaffold(req: VerifyRequest):
+    """Stream a ZIP of an already-written scaffold directory."""
+    import io as _io
+    path = Path(req.path).expanduser().resolve()
+    if not path.exists() or not path.is_dir():
+        raise HTTPException(status_code=404, detail=f"Scaffold folder not found: {path}")
+
+    buf = _io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for f in path.rglob("*"):
+            if f.is_file():
+                zf.write(f, f.relative_to(path))
+    buf.seek(0)
+
+    return StreamingResponse(
+        buf,
+        media_type="application/zip",
+        headers={"Content-Disposition": f"attachment; filename={path.name}.zip"},
+    )
+
+
 @router.get("/health")
 def health():
     return {"status": "ok", "service": "k9x_studio"}

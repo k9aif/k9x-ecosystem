@@ -124,6 +124,29 @@ export function Studio() {
   const [exporting, setExporting] = useState(false);
   const [exportMsg, setExportMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [scaffoldDone, setScaffoldDone] = useState<{ path: string; hostPath: string } | null>(null);
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    if (!scaffoldDone || downloading) return;
+    setDownloading(true);
+    try {
+      const res = await fetch('/api/scaffold/download', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: scaffoldDone.path }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${project.project_name.toLowerCase().replace(/\s+/g, '_')}_scaffold.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setExportMsg({ ok: false, text: 'Download failed: ' + err });
+      setTimeout(() => setExportMsg(null), 6000);
+    } finally { setDownloading(false); }
+  };
 
   const handleExport = async () => {
     const payload = buildProjectPayload(project, nodes as Node<NodeData>[], edges);
@@ -238,7 +261,8 @@ export function Studio() {
 
         {/* Left pane */}
         <div className="studio-left" style={{ width: leftWidth, minWidth: leftWidth, maxWidth: leftWidth }}>
-          <Palette onDragStart={onDragStart} onExport={handleExport} exporting={exporting} />
+          <Palette onDragStart={onDragStart} onExport={handleExport} exporting={exporting}
+                   onDownload={handleDownload} scaffoldReady={scaffoldDone !== null} downloading={downloading} />
         </div>
 
         {/* Left resize handle */}
@@ -293,9 +317,18 @@ export function Studio() {
               Open the project folder in VS Code, launch Claude Code,<br />
               and the framework's <code>CLAUDE.md</code> will guide it through the K9-AIF patterns.
             </div>
-            <button className="scaffold-done-btn" onClick={() => setScaffoldDone(null)}>
-              Back to Studio
-            </button>
+            <div className="scaffold-done-actions">
+              <button
+                className="scaffold-download-btn"
+                onClick={handleDownload}
+                disabled={downloading}
+              >
+                {downloading ? '⟳  Downloading…' : '⬇  Download Generated Code'}
+              </button>
+              <button className="scaffold-done-btn" onClick={() => setScaffoldDone(null)}>
+                Back to Studio
+              </button>
+            </div>
           </div>
         </div>
       )}
