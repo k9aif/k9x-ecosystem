@@ -106,10 +106,24 @@ export function Studio() {
     document.addEventListener('mouseup', onUp);
   }, [rightWidth]);
 
+  // ── Runtime config (projects_root) ──────────────────────────
+  const [projectsRoot, setProjectsRoot] = useState('');
+  useEffect(() => {
+    fetch('/api/config').then((r) => r.json()).then((cfg) => {
+      if (cfg.projects_root) setProjectsRoot(cfg.projects_root);
+    }).catch(() => {});
+  }, []);
+
+  const toHostPath = (containerPath: string) => {
+    if (!projectsRoot || !containerPath.startsWith(projectsRoot)) return containerPath;
+    const rel = containerPath.slice(projectsRoot.length).replace(/^\//, '');
+    return `~/k9x-studio-working/${rel}`;
+  };
+
   // ── Export scaffold ──────────────────────────────────────────
   const [exporting, setExporting] = useState(false);
   const [exportMsg, setExportMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  const [scaffoldDone, setScaffoldDone] = useState<{ path: string } | null>(null);
+  const [scaffoldDone, setScaffoldDone] = useState<{ path: string; hostPath: string } | null>(null);
 
   const handleExport = async () => {
     const payload = buildProjectPayload(project, nodes as Node<NodeData>[], edges);
@@ -127,7 +141,7 @@ export function Studio() {
           throw new Error(msg);
         }
         const data = await res.json();
-        setScaffoldDone({ path: data.path });
+        setScaffoldDone({ path: data.path, hostPath: toHostPath(data.path) });
       } else {
         // Download ZIP
         const res = await fetch('/api/generate', {
@@ -263,10 +277,13 @@ export function Studio() {
           <div className="scaffold-done-card" onClick={(e) => e.stopPropagation()}>
             <div className="scaffold-done-icon">✦</div>
             <div className="scaffold-done-title">Scaffold Generated</div>
-            <div className="scaffold-done-path">{scaffoldDone.path}</div>
+            <div className="scaffold-done-path">{scaffoldDone.hostPath}</div>
+            {scaffoldDone.hostPath !== scaffoldDone.path && (
+              <div className="scaffold-done-container-path">container: {scaffoldDone.path}</div>
+            )}
             <div className="scaffold-done-body">
               Your work in K9X Studio is complete.<br />
-              The project is ready — take it to your IDE to implement the agent logic.
+              Move this folder into your project alongside <code>k9-aif-framework</code> and open in VS Code.
             </div>
             <div className="scaffold-done-rec">
               Recommended next step

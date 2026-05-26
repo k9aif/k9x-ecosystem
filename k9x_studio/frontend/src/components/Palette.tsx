@@ -416,13 +416,23 @@ export function Palette({ onDragStart, onExport, exporting }: PaletteProps) {
               />
             </div>
             {inContainer ? (
-              <div className="palette-container-path-info">
-                <div className="palette-container-path-label">Scaffold output (auto-derived)</div>
-                <code className="palette-container-path">{project.project_folder || containerOutputPath(project.project_name)}</code>
-                <div className="palette-container-path-hint">
-                  → on your machine: <code>~/k9x-projects/k9_projects/{slugify(project.project_name) || '…'}/</code>
+              <>
+                <div className="palette-container-path-info">
+                  <div className="palette-container-path-label">Scaffold output</div>
+                  <code className="palette-container-path">{project.project_folder || containerOutputPath(project.project_name)}</code>
+                  <div className="palette-container-path-hint">
+                    on your machine: <code>~/k9x-studio-working/k9_projects/{slugify(project.project_name) || '…'}/</code>
+                  </div>
                 </div>
-              </div>
+                <div className="palette-project-sublabel">k9-aif-framework path on your machine</div>
+                <input
+                  className="palette-project-input palette-project-folder"
+                  placeholder="~/k9-aif-framework"
+                  value={project.framework_path}
+                  onChange={(e) => setField('framework_path', e.target.value)}
+                />
+                <div className="palette-folder-hint">Written into the generated .env so your project can find it at runtime</div>
+              </>
             ) : (
               <>
                 <div className="palette-project-folder-row">
