@@ -16,12 +16,14 @@ No LLM required. Fully air-gapped. Works with Podman or Docker.
 
 ## Install locally
 
-### Prerequisites
+### Option A — Container (recommended, no build needed)
+
+#### Prerequisites
 
 - [Podman](https://podman.io/docs/installation) or [Docker](https://docs.docker.com/get-docker/)
 - That's it.
 
-### Step 1 — Run the install script
+#### Step 1 — Run the install script
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/k9aif/k9x-ecosystem/main/deployment/run-local.sh | bash
@@ -32,13 +34,13 @@ This will:
 - Start the container on port `8080`
 - Mount `~/k9x-projects` on your machine as the projects folder
 
-### Step 2 — Open the Studio
+#### Step 2 — Open the Studio
 
 ```
 http://localhost:8080
 ```
 
-### Step 3 — Point to the K9-AIF Framework
+#### Step 3 — Point to the K9-AIF Framework
 
 On first launch, K9X Studio will ask you to set up the framework:
 
@@ -47,14 +49,14 @@ On first launch, K9X Studio will ask you to set up the framework:
 
 The framework provides the scaffold templates and the `CLAUDE.md` that guides Claude Code through implementation.
 
-### Step 4 — Design your architecture
+#### Step 4 — Design your architecture
 
 1. Fill in **Project Info** (name, author, domain, description)
 2. Click **Generate Architecture** for an AI-suggested layout, or build manually
 3. Drag components onto the canvas: Router → Orchestrator → Squad → Agents
 4. Connect and configure each node in the right-hand inspector
 
-### Step 5 — Generate the scaffold
+#### Step 5 — Generate the scaffold
 
 Click **Generate Scaffold** in the left panel.
 
@@ -72,9 +74,72 @@ Your project lands in `~/k9x-projects/k9_projects/<your-project>/` with:
 └── agents/            ← Python stubs ready to implement
 ```
 
-### Step 6 — Implement in VS Code + Claude Code
+#### Step 6 — Implement in VS Code + Claude Code
 
 Open the project folder in VS Code, launch Claude Code, and the `CLAUDE.md` will guide it through the K9-AIF patterns automatically.
+
+---
+
+---
+
+### Option B — Run from source
+
+Use this if you want to contribute or develop the Studio itself.
+
+#### Prerequisites
+
+- Python 3.11+
+- Node.js 20+
+- Git
+
+#### Step 1 — Clone the repo
+
+```bash
+git clone https://github.com/k9aif/k9x-ecosystem.git
+cd k9x-ecosystem
+```
+
+#### Step 2 — Clone the K9-AIF Framework (needed for scaffold templates)
+
+```bash
+git clone https://github.com/k9aif/k9-aif-framework.git
+```
+
+#### Step 3 — Set up the Python backend
+
+```bash
+cd k9x_studio
+python3 -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+#### Step 4 — Set up the React frontend
+
+```bash
+cd frontend
+npm install
+```
+
+#### Step 5 — Start both servers
+
+In one terminal (backend):
+
+```bash
+cd k9x_studio
+source .venv/bin/activate
+K9X_GENERATOR_TEMPLATES_DIR=../k9-aif-framework/generator/templates \
+  uvicorn backend.main:app --host 0.0.0.0 --port 8080 --reload
+```
+
+In a second terminal (frontend dev server):
+
+```bash
+cd k9x_studio/frontend
+npm run dev
+```
+
+Open **http://localhost:5173** (Vite dev server with hot reload).
 
 ---
 
