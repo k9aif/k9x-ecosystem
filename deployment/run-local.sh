@@ -37,8 +37,9 @@ echo ""
 echo "[k9x] Pulling image…"
 $RT pull "$IMAGE"
 
-# Stop any running instance
-$RT rm -f "$CONTAINER_NAME" 2>/dev/null || true
+# Stop any running instance (stop gracefully, remove so we can re-create with fresh config)
+$RT stop "$CONTAINER_NAME" 2>/dev/null || true
+$RT rm "$CONTAINER_NAME" 2>/dev/null || true
 
 # Ensure projects folder exists on host
 mkdir -p "$HOST_PROJECTS"
@@ -58,4 +59,5 @@ echo "  Open    →  http://localhost:${HOST_PORT}"
 echo "  Projects → $HOST_PROJECTS"
 echo ""
 echo "  Logs:  $RT logs -f $CONTAINER_NAME"
-echo "  Stop:  $RT rm -f $CONTAINER_NAME"
+echo "  Stop:  $RT stop $CONTAINER_NAME"
+echo "  Start: $RT start $CONTAINER_NAME"
