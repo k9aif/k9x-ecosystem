@@ -230,14 +230,16 @@ class AgentLoader:
             "# K9-AIF Framework",
         ]
         if framework_path:
+            # Ensure absolute path — strip accidental leading tilde for clarity
+            fp = framework_path.lstrip()
+            if not fp.startswith('/') and not fp.startswith('~'):
+                fp = '/' + fp
             env_lines += [
-                f'K9_FRAMEWORK_PATH="{framework_path}"',
-                f'PYTHONPATH="{framework_path}:$PYTHONPATH"',
+                f'K9_FRAMEWORK_PATH="{fp}"',
             ]
         else:
             env_lines += [
                 '# K9_FRAMEWORK_PATH="/path/to/k9-aif-framework"  # set this',
-                '# PYTHONPATH="$K9_FRAMEWORK_PATH:$PYTHONPATH"',
             ]
         env_lines += [
             "",
