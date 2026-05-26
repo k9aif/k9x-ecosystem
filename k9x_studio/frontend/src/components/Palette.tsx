@@ -31,9 +31,12 @@ interface PaletteProps {
 
 type PaletteTab = 'components' | 'project';
 
+type BpmnStatus = { state: 'idle' } | { state: 'loading' } | { state: 'ok'; name: string } | { state: 'error'; msg: string };
+
 export function Palette({ onDragStart, onExport, exporting }: PaletteProps) {
   const [tab, setTab] = useState<PaletteTab>('project');
   const [components, setComponents] = useState<PaletteComponent[]>([]);
+  const [bpmnStatus, setBpmnStatus] = useState<BpmnStatus>({ state: 'idle' });
   const { project, setProject, clearCanvas, addNode, onConnect,
           nodes, selectedNodeId, generating, setGenerating } = useStore();
 
@@ -189,6 +192,62 @@ export function Palette({ onDragStart, onExport, exporting }: PaletteProps) {
       {/* ── Project Info tab ───────────────────────── */}
       {tab === 'project' && (
         <>
+          {/* BPMN import */}
+          <div className="palette-bpmn-import">
+            <div className="palette-project-label">Import BPMN</div>
+            <label className="palette-bpmn-label">
+              <span className={`palette-bpmn-btn ${bpmnStatus.state === 'loading' ? 'palette-bpmn-loading' : ''}`}>
+                {bpmnStatus.state === 'loading' ? '⟳ Importing…' : '⬆ Browse for .bpmn / .xml'}
+              </span>
+              <input
+                type="file"
+                accept=".bpmn,.xml,application/xml,text/xml"
+                style={{ display: 'none' }}
+                disabled={bpmnStatus.state === 'loading'}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = '';
+                  if (!file) return;
+
+                  const ext = file.name.split('.').pop()?.toLowerCase();
+                  if (ext !== 'bpmn' && ext !== 'xml') {
+                    setBpmnStatus({ state: 'error', msg: `"${file.name}" is not a .bpmn or .xml file` });
+                    return;
+                  }
+
+                  setBpmnStatus({ state: 'loading' });
+                  const fd = new FormData();
+                  fd.append('file', file);
+                  try {
+                    const res = await fetch('/api/bpmn/import', { method: 'POST', body: fd });
+                    const data = await res.json();
+                    if (!res.ok) {
+                      throw new Error(data.detail ?? `Server error ${res.status}`);
+                    }
+                    if (data.process_name) {
+                      setProject({ ...project, project_name: data.process_name });
+                    }
+                    buildCanvas(data.suggestion);
+                    setTab('components');
+                    setBpmnStatus({ state: 'ok', name: file.name });
+                    setTimeout(() => setBpmnStatus({ state: 'idle' }), 4000);
+                  } catch (err: any) {
+                    setBpmnStatus({ state: 'error', msg: err.message ?? 'Import failed' });
+                  }
+                }}
+              />
+            </label>
+            {bpmnStatus.state === 'error' && (
+              <div className="palette-bpmn-error">✕ {bpmnStatus.msg}</div>
+            )}
+            {bpmnStatus.state === 'ok' && (
+              <div className="palette-bpmn-ok">✓ Imported: {bpmnStatus.name}</div>
+            )}
+            {bpmnStatus.state === 'idle' && (
+              <div className="palette-bpmn-hint">IBM BlueWorks Live · Camunda · Bizagi</div>
+            )}
+          </div>
+
           {/* Template picker */}
           <div className="palette-templates">
             <div className="palette-project-label">Start from template</div>

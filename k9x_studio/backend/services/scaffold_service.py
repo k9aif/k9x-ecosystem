@@ -11,8 +11,11 @@ from jinja2 import ChoiceLoader, Environment, FileSystemLoader
 
 # Reuse canonical generator templates when variable signatures match.
 # Studio-only templates (validation_loop, critic_actor) live in STUDIO_TEMPLATES_DIR.
+import os as _os
+_env_tpl = _os.environ.get("K9X_GENERATOR_TEMPLATES_DIR")
 GENERATOR_TEMPLATES_DIR = (
-    Path(__file__).resolve().parents[4] / "k9-aif-framework" / "generator" / "templates"
+    Path(_env_tpl) if _env_tpl
+    else Path(__file__).resolve().parents[4] / "k9-aif-framework" / "generator" / "templates"
 )
 STUDIO_TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
 

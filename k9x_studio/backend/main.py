@@ -9,6 +9,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse
 
 from backend.api.routes import router as api_router
 
@@ -20,7 +22,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -28,7 +30,15 @@ app.add_middleware(
 
 app.include_router(api_router, prefix="/api")
 
+# Serve built React frontend when dist/ exists (production / container mode)
+_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+if _DIST.exists():
+    app.mount("/assets", StaticFiles(directory=str(_DIST / "assets")), name="assets")
 
-@app.get("/")
-def root():
-    return {"message": "k9x_studio backend running — connect via frontend on :5173"}
+    @app.get("/{full_path:path}", include_in_schema=False)
+    def serve_spa(full_path: str):
+        return HTMLResponse((_DIST / "index.html").read_text())
+else:
+    @app.get("/")
+    def root():
+        return {"message": "k9x_studio backend running — connect via frontend on :5173"}

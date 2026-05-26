@@ -653,6 +653,43 @@ html, body, #root {
 }
 .palette-folder-hint code { color: #a5b4fc; }
 
+/* ── Palette: BPMN import ────────────────────────────────────── */
+
+.palette-bpmn-import {
+  padding: 10px 10px 8px;
+  border-bottom: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 6px;
+}
+
+.palette-bpmn-label { cursor: pointer; display: block; }
+
+.palette-bpmn-btn {
+  display: block;
+  background: #111120; border: 1px dashed #3a3a5a;
+  border-radius: 6px; padding: 8px 12px;
+  font-size: 11px; color: #7070a8; text-align: center;
+  transition: all 0.15s; letter-spacing: 0.04em;
+}
+.palette-bpmn-label:hover .palette-bpmn-btn {
+  border-color: #6366f155; color: #9898c8; background: #14142a;
+}
+
+.palette-bpmn-hint {
+  font-size: 10px; color: #3a3a58;
+  text-align: center; letter-spacing: 0.03em;
+}
+.palette-bpmn-loading { opacity: 0.6; cursor: wait; }
+.palette-bpmn-error {
+  font-size: 10.5px; color: #f87171;
+  background: #1a0a0a; border: 1px solid #ef444430;
+  border-radius: 5px; padding: 5px 8px;
+}
+.palette-bpmn-ok {
+  font-size: 10.5px; color: #34d399;
+  background: #0a1a12; border: 1px solid #10b98130;
+  border-radius: 5px; padding: 5px 8px;
+}
+
 /* ── Palette: templates ──────────────────────────────────────── */
 
 .palette-templates {

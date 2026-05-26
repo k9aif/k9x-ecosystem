@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # k9x_studio API routes
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, UploadFile, File
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from typing import List, Optional
@@ -9,6 +9,7 @@ import zipfile
 from pathlib import Path
 
 from backend.services.scaffold_service import generate_scaffold
+from backend.services.bpmn_service import parse_bpmn, extract_process_name
 
 router = APIRouter()
 
@@ -164,6 +165,31 @@ def _default_suggestion(project_name: str, domain: str) -> dict:
             {"name": "AuditAgent", "type": "BaseAgent", "model": "general",
              "description": f"Audit and compliance check for {d} outcomes"},
         ],
+    }
+
+
+# ── BPMN import ───────────────────────────────────────────────────────────────
+
+@router.post("/bpmn/import")
+async def bpmn_import(file: UploadFile = File(...)):
+    """
+    Parse a BPMN 2.0 file (IBM BlueWorks Live, Camunda, Bizagi, etc.)
+    and return a K9-AIF architecture suggestion.
+    """
+    if not file.filename or not file.filename.lower().endswith((".bpmn", ".xml")):
+        raise HTTPException(status_code=400, detail="Upload a .bpmn or .xml file")
+
+    content = (await file.read()).decode("utf-8", errors="replace")
+    try:
+        suggestion = parse_bpmn(content)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+    process_name = extract_process_name(content)
+    return {
+        "suggestion": suggestion,
+        "process_name": process_name,
+        "source": "bpmn",
     }
 
 
