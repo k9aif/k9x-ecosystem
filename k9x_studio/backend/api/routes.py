@@ -266,11 +266,29 @@ def generate(project: ProjectDef):
 @router.post("/generate-to-disk")
 def generate_to_disk(project: ProjectDef):
     """Generate scaffold directly into a folder on the server's filesystem."""
+    import os
     output_path = (project.output_path or project.project_folder).strip()
     if not output_path:
         raise HTTPException(status_code=400, detail="output_path is required")
 
     out_dir = Path(output_path).expanduser().resolve()
+
+    # Guard: if a projects root is configured, the output path must be inside it.
+    # This prevents writes landing inside the container instead of the mounted volume.
+    projects_root = os.environ.get("K9X_PROJECTS_ROOT", "")
+    if projects_root:
+        root_dir = Path(projects_root).resolve()
+        try:
+            out_dir.relative_to(root_dir)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Output path must be inside {projects_root} (your mounted projects folder). "
+                    f"Got: {out_dir}. Use a path starting with {projects_root}."
+                ),
+            )
+
     try:
         out_dir.mkdir(parents=True, exist_ok=True)
     except Exception as e:
@@ -278,7 +296,6 @@ def generate_to_disk(project: ProjectDef):
 
     zip_buf = generate_scaffold(project.model_dump())
 
-    # Extract ZIP into target directory
     with zipfile.ZipFile(zip_buf, "r") as zf:
         zf.extractall(out_dir)
 
