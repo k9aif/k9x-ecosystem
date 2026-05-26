@@ -8,9 +8,11 @@ app:
   domain: "{{ domain }}"
 
 # ── Inference backend ────────────────────────────────────────────────────────
-# Active backend: ollama (local)
-# To switch provider: comment out the ollama block below, uncomment the
-# openai or grok block, and set the matching key in .env
+# K9-AIF supports pluggable LLM providers via ProviderAdapterRegistry.
+# Switch provider by editing the llm_factory block below — no code changes needed.
+#
+# API keys belong in .env (or environment variables), NOT in this file.
+# Use api_key_env: MY_ENV_VAR_NAME to reference them safely.
 # ─────────────────────────────────────────────────────────────────────────────
 
 inference:
@@ -30,9 +32,13 @@ inference:
         temperature: 0.2
         max_tokens: 4096
 
-    # ── OpenAI (comment out ollama block above and uncomment this) ────────
+    # ── OpenAI ───────────────────────────────────────────────────────────
+    # To enable: comment out the Ollama block above and uncomment this block.
+    # Set OPENAI_API_KEY in your .env file.
+    #
     # backend: openai
-    # api_key: "${OPENAI_API_KEY}"
+    # provider: openai
+    # api_key_env: OPENAI_API_KEY          # key resolved from environment — never hardcode
     # models:
     #   general:
     #     model: "gpt-4o-mini"
@@ -43,10 +49,14 @@ inference:
     #     temperature: 0.2
     #     max_tokens: 4096
 
-    # ── Grok / xAI (comment out ollama block above and uncomment this) ────
-    # backend: openai
+    # ── Grok / xAI (OpenAI-compatible) ───────────────────────────────────
+    # To enable: comment out the Ollama block above and uncomment this block.
+    # Set GROK_API_KEY in your .env file.
+    #
+    # backend: openai-compatible
+    # provider: grok
     # base_url: "https://api.x.ai/v1"
-    # api_key: "${GROK_API_KEY}"
+    # api_key_env: GROK_API_KEY             # key resolved from environment — never hardcode
     # models:
     #   general:
     #     model: "grok-3-mini"
@@ -56,6 +66,11 @@ inference:
     #     model: "grok-3"
     #     temperature: 0.2
     #     max_tokens: 4096
+
+    # ── Custom / future provider ──────────────────────────────────────────
+    # Register any BaseProviderAdapter subclass before bootstrap:
+    #   ProviderAdapterRegistry.register("myprovider", MyProviderAdapter)
+    # Then set backend: myprovider here.
 
   router:
     type: k9_model_router
