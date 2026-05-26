@@ -120,7 +120,7 @@ export function Palette({ onDragStart, onExport, exporting }: PaletteProps) {
 
   const handleGenerate = async () => {
     if (generating || !project.description.trim()) return;
-    setTab('components');  // switch to canvas view when generating
+    setTab('components');
     setGenerating(true);
     try {
       const res = await fetch('/api/suggest', {
@@ -128,7 +128,7 @@ export function Palette({ onDragStart, onExport, exporting }: PaletteProps) {
         body: JSON.stringify(project),
       });
       const data = await res.json();
-      buildCanvas(data.suggestion);
+      if (data.suggestion) buildCanvas(data.suggestion);
     } catch { /* keep canvas */ }
     finally { setGenerating(false); }
   };
