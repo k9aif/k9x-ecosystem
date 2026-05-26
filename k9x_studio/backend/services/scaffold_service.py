@@ -275,7 +275,9 @@ fi
 K9_FRAMEWORK_PATH="${{K9_FRAMEWORK_PATH/#\~/$HOME}}"
 
 export PYTHONPATH="$K9_FRAMEWORK_PATH:${{PYTHONPATH:-}}"
-echo "Using framework: $K9_FRAMEWORK_PATH"
+# Development mode — skips governance pipeline for local testing
+export K9_ENV="${{K9_ENV:-development}}"
+echo "Using framework: $K9_FRAMEWORK_PATH (K9_ENV=$K9_ENV)"
 python "$SCRIPT_DIR/main.py" "$@"
 """
         add(f"{app_folder}/run.sh", run_sh)

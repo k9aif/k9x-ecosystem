@@ -3,6 +3,7 @@
 # {{ app_name }} — Entry point
 
 import sys
+import json
 import yaml
 import logging
 from pathlib import Path
@@ -53,7 +54,8 @@ def main():
     log.info("Sending payload: %s", payload)
 {% for orch in orchestrators %}
     result_{{ loop.index }} = orch_{{ loop.index }}.execute_flow(payload)
-    log.info("Result from {{ orch.name }}: %s", result_{{ loop.index }})
+    print("\n=== Result from {{ orch.name }} ===")
+    print(json.dumps(result_{{ loop.index }}, indent=2, default=str))
 {% endfor %}
 
 
