@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.env
+.DS_Store
+
+# k9x_studio
+k9x_studio/frontend/node_modules/
+k9x_studio/frontend/dist/

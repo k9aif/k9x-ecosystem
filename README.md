@@ -1,121 +1,120 @@
-# k9x_studio
+# K9X Ecosystem
 
-**Visual Architecture Builder for K9-AIF Systems**
-
-k9x_studio is a browser-based drag-and-drop IDE for designing K9-AIF multi-agent systems. It reads the `k9_aif_abb` component library, lets architects compose systems visually on a canvas, and generates production-ready YAML configuration and Python scaffold — the same output as `k9_generator.sh`, but designed rather than typed.
-
----
-
-## Workflow
-
-```
-1. Project Setup
-   └── Name, author, domain, description
-
-2. Canvas Design (drag-and-drop)
-   ├── Palette (left): Router, Orchestrator, Squad, Agent, ...
-   ├── Canvas (center): drop nodes, draw connections
-   └── Inspector (right): configure selected node
-
-3. Live Preview
-   └── YAML + Python scaffold updates in real time
-
-4. Export
-   └── Downloads zip: config/ + agents/ + squads/ + Python stubs
-       OR writes directly to ../k9-aif-framework/k9_projects/<AppName>/
-```
+The K9X Ecosystem is a layered platform for building, visualizing, and operating governed agentic AI systems using the K9-AIF Framework.
 
 ---
 
 ## Architecture
 
 ```
-┌──────────┐    ┌────────────────────────────────────────────┐    ┌────────────────┐
-│          │    │                  CANVAS                     │    │   INSPECTOR    │
-│ PALETTE  │    │                                             │    │                │
-│          │    │  [Router]────►[Orchestrator]                │    │ Node: Agent    │
-│ Router   │    │                    │                        │    │ Name: FraudDet │
-│ Orch.    │    │              [ClaimsSquad]                  │    │ Model: reason  │
-│ Squad    │    │              ┌─────┴──────┐                 │    │ Pattern: loop  │
-│ Agent    │    │          [Triage]  [Fraud] [Audit]          │    │ Role: ...      │
-│ ValLoop  │    │                                             │    │                │
-│ CritAct  │    │                                             │    │ [Generate YAML]│
-│ Guard    │    │                                             │    │ [Preview Code] │
-│ LLM      │    │                                             │    │                │
-└──────────┘    └────────────────────────────────────────────┘    └────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                        TOOLS LAYER                          │
+│                                                             │
+│   ┌─────────────────────┐   ┌─────────────────────────┐    │
+│   │    k9x_studio       │   │     k9x_inspector        │    │
+│   │  Visual Builder     │   │   Runtime Inspector      │    │
+│   │  drag-and-drop      │   │   audit · trace · graph  │    │
+│   └─────────────────────┘   └─────────────────────────┘    │
+├─────────────────────────────────────────────────────────────┤
+│                      PLATFORM LAYER                         │
+│                                                             │
+│   ┌─────────────────────┐   ┌─────────────────────────┐    │
+│   │   k9-aif-intake     │   │   k9-aif-methodology    │    │
+│   │  Intake / Scaffold  │   │   Patterns / Guidance   │    │
+│   └─────────────────────┘   └─────────────────────────┘    │
+├─────────────────────────────────────────────────────────────┤
+│                     FOUNDATION LAYER                        │
+│                                                             │
+│            ┌──────────────────────────────┐                 │
+│            │      k9-aif-framework        │                 │
+│            │   ABB/SBB · Router/Orch      │                 │
+│            │   Squad/Agent · Governance   │                 │
+│            └──────────────────────────────┘                 │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Component Palette → ABB Mapping
+## Components
 
-| Palette Node | K9-AIF ABB | Output |
+| Component | Folder | Description |
 |---|---|---|
-| **Router** | `BaseRouter` / `K9EventRouter` | `router/` Python + config |
-| **Orchestrator** | `BaseOrchestrator` | `orchestrators/` Python + config |
-| **Squad** | `BaseSquad` | `squads/yaml/<name>.yaml` |
-| **Agent** | `BaseAgent` | `agents/yaml/<name>.yaml` + `agents/src/<name>.py` |
-| **Validation Loop** | `K9ValidationLoopAgent` | Agent with loop methods scaffold |
-| **Critic-Actor** | `K9CriticActorAgent` | Agent with actor/critic scaffold |
-| **Guard** | `BaseGovernance` | Governance config entry |
-| **LLM** | `OllamaLLM` via `LLMFactory` | `inference.llm_factory.models` entry |
+| **K9-AIF Framework** | `../k9-aif-framework` | Foundation ABB/SBB library |
+| **k9x_studio** | `k9x_studio/` | Visual drag-and-drop architecture builder |
+| **k9x_inspector** | `k9x_inspector/` | Runtime inspector: audit trails, traces, graph |
+| **k9-aif-intake** | `../k9-aif-intake` | Project intake → scaffold generation |
+| **k9-aif-methodology** | `../k9-aif-methodology` | Architecture patterns and guidance |
 
 ---
 
-## Tech Stack
+## k9x_studio
 
-| Layer | Technology |
+A browser-based visual builder for K9-AIF systems. Drag components onto a canvas, configure them in a property inspector, and export production-ready YAML + Python scaffold.
+
+**Workflow:**
+1. Fill in project details (name, author, domain)
+2. Drag Router → Orchestrator → Squads → Agents onto canvas
+3. Connect components via the visual flow
+4. Configure each node in the right-panel property inspector
+5. Export: generates `config.yaml`, `agents/yaml/`, `squads/yaml/`, Python stubs
+
+**Component palette maps directly to k9_aif_abb:**
+
+| Canvas Node | ABB Class |
 |---|---|
-| Frontend canvas | React + [React Flow](https://reactflow.dev) |
-| Frontend UI | TypeScript + Tailwind CSS |
-| Backend API | Python FastAPI |
-| ABB introspection | reads `../k9-aif-framework/k9_aif_abb/` |
-| Scaffold generation | extends `k9_generator.sh` logic |
-| Export | ZIP (config + code) or write to `k9_projects/` |
+| Router | `BaseRouter` → `K9EventRouter` |
+| Orchestrator | `BaseOrchestrator` |
+| Squad | `BaseSquad` |
+| Agent | `BaseAgent` |
+| Validation Loop | `K9ValidationLoopAgent` |
+| Critic-Actor | `K9CriticActorAgent` |
+| Guard | `BaseGovernance` |
+| LLM | `OllamaLLM` via `LLMFactory` |
+
+→ [k9x_studio/README.md](k9x_studio/README.md)
 
 ---
 
-## Development Phases
+## k9x_inspector
 
-### Phase 1 — Project setup + scaffold (MVP)
-- Project details form (name, author, domain, description)
-- Component form: add Agents, Squads, Orchestrator via guided form
-- Backend generates the same scaffold as `k9_generator.sh`
-- Download as ZIP
+Runtime inspection UI for running K9-AIF deployments. Connects to live infrastructure (PostgreSQL, Neo4j, Kafka) to surface execution traces, routing decisions, governance audit trails, and architecture graph.
 
-### Phase 2 — Visual canvas
-- React Flow canvas with draggable nodes
-- Palette: all ABB component types
-- Connect nodes with edges (Squad → Agent, Orchestrator → Squad)
-- Property inspector panel (right side)
-- Real-time YAML preview
-
-### Phase 3 — ABB introspection
-- Backend reads `k9_aif_abb/` source + YAML examples
-- Palette populated dynamically from ABB registry
-- Property fields driven by ABB contract signatures
-
-### Phase 4 — k9x_inspector integration
-- "Inspect" button on deployed nodes opens k9x_inspector
-- Live routing decisions, governance trails, agent traces
+→ [k9x_inspector/README.md](k9x_inspector/README.md)
 
 ---
 
-## Running
+## Prerequisites
+
+All tools in this ecosystem reference the K9-AIF Framework. Clone siblings into the same parent directory:
 
 ```bash
-cd k9x_studio
-./run.sh          # starts backend (port 8080) + frontend (port 3000)
+git clone https://github.com/k9aif/k9-aif-framework
+git clone https://github.com/k9aif/k9x-ecosystem
 ```
 
-Backend references `../k9-aif-framework` for ABB introspection and scaffold generation.
+Shared infrastructure (always-on):
+
+| Service | Address |
+|---|---|
+| Ollama | `http://192.168.1.98:11434` |
+| PostgreSQL | `192.168.1.98:5432` |
+| Kafka / Redpanda | `192.168.1.98:9092` |
+| Neo4j | `bolt://192.168.1.98:7687` |
 
 ---
 
-## References
+## Running locally
 
-- K9-AIF Framework: `../k9-aif-framework`
-- ABB contracts: `../k9-aif-framework/k9_aif_abb/`
-- Reference examples: `../k9-aif-framework/examples/`
-- Generator script: `../k9-aif-framework/k9_generator.sh`
-- Developer Guide: `../k9-aif-framework/docs/developers/Developer-guide.md`
+Each tool runs independently:
+
+```bash
+# K9X Studio
+cd k9x_studio && ./run.sh
+
+# K9X Inspector
+cd k9x_inspector && ./run.sh
+```
+
+---
+
+*K9X Ecosystem — https://k9x.ai*
