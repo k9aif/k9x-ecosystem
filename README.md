@@ -29,9 +29,17 @@ podman run -d \
   ghcr.io/k9aif/k9x-studio:latest
 ```
 
-Open **http://localhost:8080** — Studio opens directly, no setup required.
+The volume mount maps your local folder into the container:
 
-Generated project scaffolds land in `~/k9x-studio-working/k9_projects/` on your machine.
+```
+~/k9x-studio-working   ← your machine (Mac / Linux)
+        ↕  mounted as
+/k9x/projects          ← inside the container
+```
+
+Generated project scaffolds land in `~/k9x-studio-working/k9_projects/<your-project>/` on your machine.
+
+Open **http://localhost:8080** — Studio opens directly, no setup required.
 
 > **Docker users:** replace `podman` with `docker` and drop the `:Z` flag from the volume mount.
 
@@ -60,18 +68,20 @@ podman run -d --name k9x_studio -p 8080:8080 \
 ## Custom port or working folder
 
 ```bash
-# Custom port
+# Custom port (host 9090 → container 8080)
 podman run -d --name k9x_studio -p 9090:8080 \
   -e K9X_PROJECTS_ROOT="/k9x/projects" \
   -v ~/k9x-studio-working:/k9x/projects:Z \
   ghcr.io/k9aif/k9x-studio:latest
 
-# Custom folder
+# Custom local folder (~/my-projects on host → /k9x/projects in container)
 podman run -d --name k9x_studio -p 8080:8080 \
   -e K9X_PROJECTS_ROOT="/k9x/projects" \
   -v ~/my-projects:/k9x/projects:Z \
   ghcr.io/k9aif/k9x-studio:latest
 ```
+
+The container-side path `/k9x/projects` is fixed — always mount your chosen host folder there.
 
 ---
 
