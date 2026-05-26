@@ -12,6 +12,8 @@ A browser-based drag-and-drop architecture builder for K9-AIF systems.
 
 No LLM required. Fully air-gapped. Works with Podman or Docker.
 
+> See the [launch post on LinkedIn](https://www.linkedin.com/posts/ravi-natarajan-1015683b7_ai-multiagentai-aiarchitecture-share-7465094355217842176-OEii/) for a walkthrough and live demo screenshot.
+
 ---
 
 ## Quick start — no git clone needed
