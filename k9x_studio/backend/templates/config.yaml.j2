@@ -7,8 +7,16 @@ app:
   author: "{{ author }}"
   domain: "{{ domain }}"
 
+# ── Inference backend ────────────────────────────────────────────────────────
+# Active backend: ollama (local)
+# To switch provider: comment out the ollama block below, uncomment the
+# openai or grok block, and set the matching key in .env
+# ─────────────────────────────────────────────────────────────────────────────
+
 inference:
   llm_factory:
+
+    # ── Ollama (default — local, no API key needed) ───────────────────────
     backend: ollama
     provider: ollama
     base_url: "{{ ollama_base_url }}"
@@ -21,6 +29,33 @@ inference:
         model: "granite3-dense:2b"
         temperature: 0.2
         max_tokens: 4096
+
+    # ── OpenAI (comment out ollama block above and uncomment this) ────────
+    # backend: openai
+    # api_key: "${OPENAI_API_KEY}"
+    # models:
+    #   general:
+    #     model: "gpt-4o-mini"
+    #     temperature: 0.3
+    #     max_tokens: 2048
+    #   reasoning:
+    #     model: "gpt-4o"
+    #     temperature: 0.2
+    #     max_tokens: 4096
+
+    # ── Grok / xAI (comment out ollama block above and uncomment this) ────
+    # backend: openai
+    # base_url: "https://api.x.ai/v1"
+    # api_key: "${GROK_API_KEY}"
+    # models:
+    #   general:
+    #     model: "grok-3-mini"
+    #     temperature: 0.3
+    #     max_tokens: 2048
+    #   reasoning:
+    #     model: "grok-3"
+    #     temperature: 0.2
+    #     max_tokens: 4096
 
   router:
     type: k9_model_router

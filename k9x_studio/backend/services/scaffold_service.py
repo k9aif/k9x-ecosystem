@@ -249,8 +249,14 @@ class AgentLoader:
             ]
         env_lines += [
             "",
-            "# LLM",
+            "# LLM — Ollama (default)",
             'OLLAMA_BASE_URL="http://localhost:11434"',
+            "",
+            "# LLM — OpenAI (uncomment if using OpenAI backend in config.yaml)",
+            '# OPENAI_API_KEY="sk-..."',
+            "",
+            "# LLM — Grok / xAI (uncomment if using Grok backend in config.yaml)",
+            '# GROK_API_KEY="xai-..."',
             "",
             "# App",
             f'APP_NAME="{app_name}"',
