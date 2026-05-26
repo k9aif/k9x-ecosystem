@@ -40,6 +40,7 @@ export function SetupScreen() {
   // ── Option A: already have it ─────────────────────────────────
   const [existingPath, setExistingPath] = useState('');
   const [pathError, setPathError] = useState('');
+  const inContainer = Boolean(projectsRoot);
   const [verifyState, setVerifyState] = useState<VerifyState>('idle');
   const [verifyError, setVerifyError] = useState('');
   const [resolvedPath, setResolvedPath] = useState('');
@@ -148,11 +149,15 @@ export function SetupScreen() {
         {/* ── Option A ──────────────────────────────────────── */}
         <div className="setup-option">
           <div className="setup-option-label">I already have it</div>
-          <div className="setup-option-sub">Point to the folder where you cloned k9-aif-framework</div>
+          <div className="setup-option-sub">
+            {inContainer
+              ? <>Enter the path inside the container — your <code>~/k9x-projects</code> folder on the host is mounted at <code>{projectsRoot}</code></>
+              : 'Enter the full path to your k9-aif-framework folder'}
+          </div>
           <div className="setup-input-row">
             <input
               className="setup-input"
-              placeholder="~/path/to/k9-aif-framework"
+              placeholder={inContainer ? `${projectsRoot}/k9-aif-framework` : '~/path/to/k9-aif-framework'}
               value={existingPath}
               onChange={(e) => {
                 setExistingPath(e.target.value);
@@ -163,18 +168,20 @@ export function SetupScreen() {
               disabled={verifyState === 'checking' || verifyState === 'cloning' || verifyState === 'done'}
               autoFocus
             />
-            <button
-              className="setup-browse-btn"
-              title="Browse"
-              onClick={async () => {
-                try {
-                  const dir = await (window as any).showDirectoryPicker({ mode: 'read' });
-                  setExistingPath(dir.name);
-                  setPathError('');
-                  setVerifyState('idle');
-                } catch { /* cancelled */ }
-              }}
-            >⋯</button>
+            {!inContainer && (
+              <button
+                className="setup-browse-btn"
+                title="Browse (returns folder name only — type full path for accuracy)"
+                onClick={async () => {
+                  try {
+                    const dir = await (window as any).showDirectoryPicker({ mode: 'read' });
+                    setExistingPath(dir.name);
+                    setPathError('');
+                    setVerifyState('idle');
+                  } catch { /* cancelled */ }
+                }}
+              >⋯</button>
+            )}
           </div>
 
           {pathError && <div className="setup-field-error">{pathError}</div>}
@@ -229,7 +236,9 @@ export function SetupScreen() {
         <div className="setup-option">
           <div className="setup-option-label">Set it up for me</div>
           <div className="setup-option-sub">
-            Point to a folder — K9X Studio will clone the framework from GitHub and prepare it for development
+            {inContainer
+              ? <>Cloned files will be saved inside the container at <code>{projectsRoot}</code> — this maps to <code>~/k9x-projects</code> on your host</>
+              : 'Point to a folder — K9X Studio will clone the framework from GitHub and prepare it for development'}
           </div>
           <div className="setup-input-row">
             <input
