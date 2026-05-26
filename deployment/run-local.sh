@@ -6,15 +6,16 @@
 #   PORT=9090 ./run-local.sh              # custom port
 #   OLLAMA_URL=http://... ./run-local.sh  # point to a specific Ollama
 #
-# Your k9-aif-framework clones and generated projects are saved to
-# $HOME/k9x-projects on your machine (mounted as /k9x/projects inside).
+# Generated scaffolds are saved to $HOME/k9x-studio-working on your machine
+# (mounted as /k9x/projects inside the container).
+# Override with: K9X_HOST_PROJECTS=/your/folder ./run-local.sh
 
 set -euo pipefail
 
 IMAGE="${K9X_IMAGE:-ghcr.io/k9aif/k9x-studio:latest}"
 HOST_PORT="${PORT:-8080}"
 OLLAMA_URL="${OLLAMA_URL:-http://host.containers.internal:11434}"
-HOST_PROJECTS="${K9X_HOST_PROJECTS:-$HOME/k9x-projects}"
+HOST_PROJECTS="${K9X_HOST_PROJECTS:-$HOME/k9x-studio-working}"
 CONTAINER_NAME="k9x_studio"
 
 # Prefer Podman; fall back to Docker
@@ -55,8 +56,8 @@ $RT run -d \
 
 echo ""
 echo "  k9x_studio is running"
-echo "  Open    →  http://localhost:${HOST_PORT}"
-echo "  Projects → $HOST_PROJECTS"
+echo "  Open      →  http://localhost:${HOST_PORT}"
+echo "  Scaffolds →  $HOST_PROJECTS/k9_projects/"
 echo ""
 echo "  Logs:  $RT logs -f $CONTAINER_NAME"
 echo "  Stop:  $RT stop $CONTAINER_NAME"

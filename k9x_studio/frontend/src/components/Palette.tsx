@@ -33,22 +33,63 @@ type PaletteTab = 'components' | 'project';
 
 type BpmnStatus = { state: 'idle' } | { state: 'loading' } | { state: 'ok'; name: string } | { state: 'error'; msg: string };
 
+function slugify(s: string) {
+  return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+}
+
 export function Palette({ onDragStart, onExport, exporting }: PaletteProps) {
   const [tab, setTab] = useState<PaletteTab>('project');
   const [components, setComponents] = useState<PaletteComponent[]>([]);
   const [bpmnStatus, setBpmnStatus] = useState<BpmnStatus>({ state: 'idle' });
+  const [projectsRoot, setProjectsRoot] = useState('');
   const { project, setProject, clearCanvas, addNode, onConnect,
           nodes, selectedNodeId, generating, setGenerating, layoutCanvas, collapseAllSquads } = useStore();
 
+  const inContainer = Boolean(projectsRoot);
+
+  useEffect(() => {
+    fetch('/api/config')
+      .then((r) => r.json())
+      .then((cfg) => {
+        if (cfg.projects_root) {
+          setProjectsRoot(cfg.projects_root);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // When container root loads, fix project_folder if it's wrong or empty
+  useEffect(() => {
+    if (!projectsRoot) return;
+    const root = projectsRoot.endsWith('/') ? projectsRoot : `${projectsRoot}/`;
+    const currentFolder = project.project_folder;
+    if (!currentFolder || !currentFolder.startsWith(root)) {
+      setProject({ ...project, project_folder: containerOutputPath(project.project_name) });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectsRoot]);
+
+  const containerOutputPath = (name: string) => {
+    const root = projectsRoot.endsWith('/') ? projectsRoot : `${projectsRoot}/`;
+    const slug = slugify(name);
+    return slug ? `${root}k9_projects/${slug}/` : `${root}k9_projects/`;
+  };
+
   const setField = (key: string, val: string) => {
     const updated = { ...project, [key]: val };
-    // When framework_path changes, auto-set project_folder to {framework_path}/k9_projects/
-    if (key === 'framework_path' && val.trim()) {
-      const sep = val.trim().endsWith('/') ? '' : '/';
-      updated.project_folder = `${val.trim()}${sep}k9_projects/`;
+    if (inContainer) {
+      // In container mode: auto-derive output path from project name
+      if (key === 'project_name') {
+        updated.project_folder = containerOutputPath(val);
+      }
+    } else {
+      if (key === 'framework_path' && val.trim()) {
+        const sep = val.trim().endsWith('/') ? '' : '/';
+        updated.project_folder = `${val.trim()}${sep}k9_projects/`;
+      }
     }
     setProject(updated);
-  };;
+  };
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId);
   const selectedType = selectedNode ? (selectedNode.data as NodeData).componentType : null;
@@ -374,48 +415,60 @@ export function Palette({ onDragStart, onExport, exporting }: PaletteProps) {
                 onChange={(e) => setField('domain', e.target.value)}
               />
             </div>
-            <div className="palette-project-folder-row">
-              <input
-                className="palette-project-input palette-project-folder"
-                placeholder="/path/to/output/folder"
-                value={project.project_folder}
-                onChange={(e) => setField('project_folder', e.target.value)}
-              />
-              <button
-                className="palette-browse-btn"
-                title="Browse for folder"
-                onClick={async () => {
-                  try {
-                    const dir = await (window as any).showDirectoryPicker({ mode: 'readwrite' });
-                    setField('project_folder', dir.name);
-                  } catch { /* cancelled or unsupported */ }
-                }}
-              >⋯</button>
-            </div>
-            {project.project_folder && (
-              <div className="palette-folder-hint">→ <code>{project.project_folder}</code></div>
-            )}
-            <div className="palette-project-sublabel">K9-AIF Framework Location</div>
-            <div className="palette-project-folder-row">
-              <input
-                className="palette-project-input palette-project-folder"
-                placeholder="~/path/to/k9-aif-framework"
-                value={project.framework_path}
-                onChange={(e) => setField('framework_path', e.target.value)}
-              />
-              <button
-                className="palette-browse-btn"
-                title="Browse for k9-aif-framework folder"
-                onClick={async () => {
-                  try {
-                    const dir = await (window as any).showDirectoryPicker({ mode: 'read' });
-                    setField('framework_path', dir.name);
-                  } catch { /* cancelled or unsupported */ }
-                }}
-              >⋯</button>
-            </div>
-            {project.framework_path && (
-              <div className="palette-folder-hint">→ <code>{project.framework_path}</code></div>
+            {inContainer ? (
+              <div className="palette-container-path-info">
+                <div className="palette-container-path-label">Scaffold output (auto-derived)</div>
+                <code className="palette-container-path">{project.project_folder || containerOutputPath(project.project_name)}</code>
+                <div className="palette-container-path-hint">
+                  → on your machine: <code>~/k9x-projects/k9_projects/{slugify(project.project_name) || '…'}/</code>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="palette-project-folder-row">
+                  <input
+                    className="palette-project-input palette-project-folder"
+                    placeholder="/path/to/output/folder"
+                    value={project.project_folder}
+                    onChange={(e) => setField('project_folder', e.target.value)}
+                  />
+                  <button
+                    className="palette-browse-btn"
+                    title="Browse for folder"
+                    onClick={async () => {
+                      try {
+                        const dir = await (window as any).showDirectoryPicker({ mode: 'readwrite' });
+                        setField('project_folder', dir.name);
+                      } catch { /* cancelled or unsupported */ }
+                    }}
+                  >⋯</button>
+                </div>
+                {project.project_folder && (
+                  <div className="palette-folder-hint">→ <code>{project.project_folder}</code></div>
+                )}
+                <div className="palette-project-sublabel">K9-AIF Framework Location</div>
+                <div className="palette-project-folder-row">
+                  <input
+                    className="palette-project-input palette-project-folder"
+                    placeholder="~/path/to/k9-aif-framework"
+                    value={project.framework_path}
+                    onChange={(e) => setField('framework_path', e.target.value)}
+                  />
+                  <button
+                    className="palette-browse-btn"
+                    title="Browse for k9-aif-framework folder"
+                    onClick={async () => {
+                      try {
+                        const dir = await (window as any).showDirectoryPicker({ mode: 'read' });
+                        setField('framework_path', dir.name);
+                      } catch { /* cancelled or unsupported */ }
+                    }}
+                  >⋯</button>
+                </div>
+                {project.framework_path && (
+                  <div className="palette-folder-hint">→ <code>{project.framework_path}</code></div>
+                )}
+              </>
             )}
           </div>
 

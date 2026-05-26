@@ -29,41 +29,27 @@ cd k9x-ecosystem
 
 Requires [Podman](https://podman.io/docs/installation) or [Docker](https://docs.docker.com/get-docker/).
 
-#### Step 2 — Choose a projects folder on your machine
-
-The container needs a folder on your machine to store the K9-AIF Framework clone and generated projects. Pick any folder — it will be mounted into the container.
+#### Step 2 — Run the Studio
 
 ```bash
-mkdir -p ~/k9x-projects   # or any folder you prefer, e.g. ~/work/k9x
-```
-
-#### Step 3 — Run the Studio
-
-```bash
-# Default — uses ~/k9x-projects
 ./deployment/run-local.sh
-
-# Custom folder
-K9X_HOST_PROJECTS=~/work/k9x ./deployment/run-local.sh
 ```
 
-This pulls `ghcr.io/k9aif/k9x-studio:latest` and starts the container with your chosen folder mounted inside it. The Studio reads and writes directly to your Mac (or Linux) filesystem through this mount — no files are stored inside the container itself.
+This pulls `ghcr.io/k9aif/k9x-studio:latest` and starts the Studio. Generated project scaffolds land in `~/k9x-studio-working/k9_projects/` on your machine.
 
-#### Step 4 — Open the Studio
+Use a custom folder if you prefer:
+
+```bash
+K9X_HOST_PROJECTS=~/my-projects ./deployment/run-local.sh
+```
+
+#### Step 3 — Open the Studio
 
 ```
 http://localhost:8080
 ```
 
-#### Step 5 — Set up the K9-AIF Framework
-
-On first launch, Studio will ask where to find the K9-AIF Framework:
-
-- **Already have it?** Enter the **container-side path**: your projects folder is mounted at `/k9x/projects` inside the container.
-  - Example: if your projects folder is `~/k9x-projects` and your framework is at `~/k9x-projects/k9-aif-framework`, enter `/k9x/projects/k9-aif-framework`
-- **Don't have it?** Use **"Set it up for me"** — Studio will clone the framework into your projects folder automatically. The default path shown is already correct.
-
-> **Why container paths?** The Studio backend runs inside the container. It can only access your machine's files through the mounted folder, which always appears as `/k9x/projects` inside the container regardless of where it lives on your machine.
+Studio opens directly — no setup required. Fill in your project details and start designing.
 
 ---
 
@@ -117,15 +103,6 @@ Open **http://localhost:5173**
 
 ## Using K9X Studio
 
-### Point to the K9-AIF Framework
-
-On first launch, Studio will ask you to set up the framework:
-
-- **Already have it?** Enter the path to your local `k9-aif-framework` clone.
-- **Don't have it?** Enter a folder path — Studio will clone it from GitHub for you.
-
-The framework provides the scaffold templates and the `CLAUDE.md` that guides Claude Code through implementation.
-
 ### Design your architecture
 
 1. Fill in **Project Info** (name, author, domain, description)
@@ -137,7 +114,7 @@ The framework provides the scaffold templates and the `CLAUDE.md` that guides Cl
 
 Click **Generate Scaffold** in the left panel.
 
-Your project lands in `~/k9x-projects/k9_projects/<your-project>/` with:
+Your project lands in `~/k9x-studio-working/k9_projects/<your-project>/` with:
 
 ```
 <project>/
@@ -157,7 +134,7 @@ Open the project folder in VS Code, launch Claude Code, and the `CLAUDE.md` guid
 
 ---
 
-## Custom port or projects folder
+## Custom port or working folder
 
 ```bash
 PORT=9090 ./deployment/run-local.sh

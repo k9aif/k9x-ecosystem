@@ -840,6 +840,25 @@ html, body, #root {
 }
 .palette-folder-hint code { color: #a5b4fc; }
 
+.palette-container-path-info {
+  margin: 4px 0 6px;
+  background: #1a1a28; border: 1px solid #2d2d45; border-radius: 6px;
+  padding: 8px 10px; display: flex; flex-direction: column; gap: 3px;
+}
+.palette-container-path-label {
+  font-size: 9px; text-transform: uppercase; letter-spacing: .05em;
+  color: #64748b; font-family: var(--font-mono);
+}
+.palette-container-path {
+  font-size: 10px; color: #a5b4fc; font-family: var(--font-mono);
+  word-break: break-all; white-space: pre-wrap;
+}
+.palette-container-path-hint {
+  font-size: 10px; color: #64748b; font-family: var(--font-mono);
+  word-break: break-all;
+}
+.palette-container-path-hint code { color: #818cf8; }
+
 /* ── Palette: BPMN import ────────────────────────────────────── */
 
 .palette-bpmn-import {

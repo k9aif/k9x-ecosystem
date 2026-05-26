@@ -121,7 +121,11 @@ export function Studio() {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...payload, output_path: project.project_folder.trim() }),
         });
-        if (!res.ok) throw new Error(await res.text());
+        if (!res.ok) {
+          let msg = `Server error ${res.status}`;
+          try { const d = await res.json(); msg = d.detail ?? msg; } catch { msg = await res.text() || msg; }
+          throw new Error(msg);
+        }
         const data = await res.json();
         setScaffoldDone({ path: data.path });
       } else {

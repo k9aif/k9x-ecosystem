@@ -51,7 +51,7 @@ interface StudioStore {
 const MAX_HISTORY = 50;
 
 export const useStore = create<StudioStore>((set) => ({
-  screen: 'setup',
+  screen: 'studio',
   project: { project_name: '', author: '', domain: '', description: '', project_folder: '', framework_path: '', platforms: [] },
   nodes: [],
   edges: [],
