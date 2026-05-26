@@ -189,11 +189,15 @@ Re-run `run-local.sh` any time to pull the latest image and restart with a fresh
 
 ---
 
-## Self-hosted deployment (RHEL / Podman)
+## Self-hosted deployment (any Podman server)
+
+Deploy to any SSH-accessible machine running Podman — Linux, Mac, or a cloud VM.
 
 ```bash
-RHEL_HOST=your-server RHEL_USER=you ./deployment/deploy-rhel.sh
+REMOTE_HOST=your-server REMOTE_USER=you ./deployment/deploy-remote.sh
 ```
+
+Builds the image locally, ships it over SSH, starts the pod on the remote machine. No internet access required on the remote host.
 
 ---
 
