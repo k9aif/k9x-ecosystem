@@ -16,90 +16,41 @@ No LLM required. Fully air-gapped. Works with Podman or Docker.
 
 ## Install locally
 
-### Option A — Container (recommended, no build needed)
-
-#### Prerequisites
-
-- [Podman](https://podman.io/docs/installation) or [Docker](https://docs.docker.com/get-docker/)
-- That's it.
-
-#### Step 1 — Run the install script
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/k9aif/k9x-ecosystem/main/deployment/run-local.sh | bash
-```
-
-This will:
-- Pull `ghcr.io/k9aif/k9x-studio:latest` from GitHub Container Registry
-- Start the container on port `8080`
-- Mount `~/k9x-projects` on your machine as the projects folder
-
-#### Step 2 — Open the Studio
-
-```
-http://localhost:8080
-```
-
-#### Step 3 — Point to the K9-AIF Framework
-
-On first launch, K9X Studio will ask you to set up the framework:
-
-- **Already have it?** Enter the path to your local `k9-aif-framework` clone.
-- **Don't have it?** Enter a folder path — Studio will clone it from GitHub for you.
-
-The framework provides the scaffold templates and the `CLAUDE.md` that guides Claude Code through implementation.
-
-#### Step 4 — Design your architecture
-
-1. Fill in **Project Info** (name, author, domain, description)
-2. Click **Generate Architecture** for an AI-suggested layout, or build manually
-3. Drag components onto the canvas: Router → Orchestrator → Squad → Agents
-4. Connect and configure each node in the right-hand inspector
-
-#### Step 5 — Generate the scaffold
-
-Click **Generate Scaffold** in the left panel.
-
-Your project lands in `~/k9x-projects/k9_projects/<your-project>/` with:
-
-```
-<project>/
-├── CLAUDE.md          ← guides Claude Code through K9-AIF patterns
-├── .env               ← framework path, Python path
-├── run.sh             ← bootstrap script
-├── config/
-│   └── config.yaml    ← full architecture definition
-├── agents/yaml/       ← per-agent configuration
-├── squads/yaml/       ← squad definitions
-└── agents/            ← Python stubs ready to implement
-```
-
-#### Step 6 — Implement in VS Code + Claude Code
-
-Open the project folder in VS Code, launch Claude Code, and the `CLAUDE.md` will guide it through the K9-AIF patterns automatically.
-
----
-
----
-
-### Option B — Run from source
-
-Use this if you want to contribute or develop the Studio itself.
-
-#### Prerequisites
-
-- Python 3.11+
-- Node.js 20+
-- Git
-
-#### Step 1 — Clone the repo
+### Step 1 — Clone the repo
 
 ```bash
 git clone https://github.com/k9aif/k9x-ecosystem.git
 cd k9x-ecosystem
 ```
 
-#### Step 2 — Clone the K9-AIF Framework (needed for scaffold templates)
+---
+
+### Option A — Container (recommended, no build needed)
+
+Requires [Podman](https://podman.io/docs/installation) or [Docker](https://docs.docker.com/get-docker/).
+
+#### Step 2 — Run
+
+```bash
+./deployment/run-local.sh
+```
+
+This pulls `ghcr.io/k9aif/k9x-studio:latest`, starts the container on port `8080`,
+and mounts `~/k9x-projects` on your machine as the projects folder.
+
+#### Step 3 — Open the Studio
+
+```
+http://localhost:8080
+```
+
+---
+
+### Option B — Run from source
+
+Requires Python 3.11+ and Node.js 20+.
+
+#### Step 2 — Clone the K9-AIF Framework
 
 ```bash
 git clone https://github.com/k9aif/k9-aif-framework.git
@@ -123,7 +74,7 @@ npm install
 
 #### Step 5 — Start both servers
 
-In one terminal (backend):
+Terminal 1 — backend:
 
 ```bash
 cd k9x_studio
@@ -132,36 +83,73 @@ K9X_GENERATOR_TEMPLATES_DIR=../k9-aif-framework/generator/templates \
   uvicorn backend.main:app --host 0.0.0.0 --port 8080 --reload
 ```
 
-In a second terminal (frontend dev server):
+Terminal 2 — frontend:
 
 ```bash
 cd k9x_studio/frontend
 npm run dev
 ```
 
-Open **http://localhost:5173** (Vite dev server with hot reload).
+Open **http://localhost:5173**
+
+---
+
+## Using K9X Studio
+
+### Point to the K9-AIF Framework
+
+On first launch, Studio will ask you to set up the framework:
+
+- **Already have it?** Enter the path to your local `k9-aif-framework` clone.
+- **Don't have it?** Enter a folder path — Studio will clone it from GitHub for you.
+
+The framework provides the scaffold templates and the `CLAUDE.md` that guides Claude Code through implementation.
+
+### Design your architecture
+
+1. Fill in **Project Info** (name, author, domain, description)
+2. Click **Generate Architecture** for an AI-suggested layout, or build manually
+3. Drag components onto the canvas: Router → Orchestrator → Squad → Agents
+4. Connect and configure each node in the right-hand inspector
+
+### Generate the scaffold
+
+Click **Generate Scaffold** in the left panel.
+
+Your project lands in `~/k9x-projects/k9_projects/<your-project>/` with:
+
+```
+<project>/
+├── CLAUDE.md          ← guides Claude Code through K9-AIF patterns
+├── .env               ← framework path, Python path
+├── run.sh             ← bootstrap script
+├── config/
+│   └── config.yaml    ← full architecture definition
+├── agents/yaml/       ← per-agent configuration
+├── squads/yaml/       ← squad definitions
+└── agents/            ← Python stubs ready to implement
+```
+
+### Implement in VS Code + Claude Code
+
+Open the project folder in VS Code, launch Claude Code, and the `CLAUDE.md` guides it through the K9-AIF patterns automatically.
 
 ---
 
 ## Custom port or projects folder
 
 ```bash
-# Different port
 PORT=9090 ./deployment/run-local.sh
-
-# Different projects folder
 K9X_HOST_PROJECTS=/my/projects ./deployment/run-local.sh
 ```
-
----
 
 ## Stop / restart
 
 ```bash
-podman rm -f k9x_studio   # stop
+podman rm -f k9x_studio
 ```
 
-Re-run the install script any time to pull the latest image and restart.
+Re-run `run-local.sh` any time to pull the latest image and restart.
 
 ---
 
