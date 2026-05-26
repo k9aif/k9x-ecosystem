@@ -193,7 +193,7 @@ export function Studio() {
 
         <div className="header-center">
           <span className="header-framework">k9-AIF Framework</span>
-          {project.project_folder && (
+          {project.project_folder && project.project_name && (
             <span className="header-workdir" title={project.project_folder}>
               Working folder: <code>{toHostPath(project.project_folder)}</code>
             </span>
