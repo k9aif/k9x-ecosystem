@@ -533,15 +533,14 @@ export function Palette({ onDragStart, onExport, exporting, onDownload, scaffold
         >
           {exporting ? '⟳  Writing…' : '⬆  Generate Scaffold'}
         </button>
-        {scaffoldReady && onDownload && (
-          <button
-            className="palette-download-btn"
-            onClick={onDownload}
-            disabled={downloading}
-          >
-            {downloading ? '⟳  Downloading…' : '⬇  Download Generated Code'}
-          </button>
-        )}
+        <button
+          className="palette-download-btn"
+          onClick={onDownload}
+          disabled={!scaffoldReady || downloading}
+          title={!scaffoldReady ? 'Generate scaffold first' : 'Download scaffold as ZIP'}
+        >
+          {downloading ? '⟳  Downloading…' : '⬇  Download Generated Code'}
+        </button>
       </div>
     </aside>
   );
