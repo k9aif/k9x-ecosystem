@@ -335,12 +335,16 @@ export function Palette({ onDragStart, onExport, exporting, onDownload, scaffold
                     setTab('components');
                     setGenerating(true);
                     try {
-                      const res = await fetch('/api/suggest', {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(updated),
-                      });
-                      const data = await res.json();
-                      if (data.suggestion) buildCanvas(data.suggestion);
+                      if (t.suggestion) {
+                        buildCanvas(t.suggestion);
+                      } else {
+                        const res = await fetch('/api/suggest', {
+                          method: 'POST', headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify(updated),
+                        });
+                        const data = await res.json();
+                        if (data.suggestion) buildCanvas(data.suggestion);
+                      }
                     } catch { /* keep canvas */ }
                     finally { setGenerating(false); }
                   }}

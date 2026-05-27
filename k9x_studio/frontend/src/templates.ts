@@ -118,8 +118,11 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
       'The Almighty is overwhelmed. 8 billion humans are simultaneously submitting requests for world peace, lottery wins, revenge on their ex, and help finding car keys. A cosmic AI system is urgently required to triage the infinite request queue, audit karma, verify humanitarian merit, and ensure desires — sports cars, perfect abs, that promotion — are permanently deprioritized. Lottery requests route directly to /dev/null. Court-ordered community service hours do not count toward karma. The system must be fair, patient, and capable of handling "why me?" complaints at planetary scale.',
     suggestion: {
       orchestrators: [
-        { name: 'DivineOrchestrator' },
+        { name: 'RequestTriageOrchestrator' },
         { name: 'KarmaOrchestrator' },
+        { name: 'HumanitarianOrchestrator' },
+        { name: 'DesireManagementOrchestrator' },
+        { name: 'MiracleOrchestrator' },
       ],
       squads: [
         { name: 'RequestTriageSquad',     agents: ['RequestClassifierAgent', 'WhiningFilterAgent', 'RepeatOffenderAgent', 'UrgencyRankingAgent'] },
