@@ -4,6 +4,7 @@ import type { NodeData } from '../types';
 import { useStore } from '../store';
 
 const ICONS: Record<string, string> = {
+  intent_squad: '⊕',
   router: '⇄',
   orchestrator: '◈',
   squad: '◫',
@@ -23,7 +24,7 @@ const handleStyle = (color: string) => ({
 
 export function K9Node({ id, data, selected }: NodeProps) {
   const d = data as NodeData;
-  const { edges, toggleSquadCollapse } = useStore();
+  const { edges, nodes, toggleSquadCollapse } = useStore();
   const icon = ICONS[d.componentType] ?? '◉';
 
   if (d.system) {
@@ -100,8 +101,13 @@ export function K9Node({ id, data, selected }: NodeProps) {
           {d.abbClass}
         </div>
 
-        {d.componentType === 'squad' && (() => {
-          const agentCount = edges.filter((e) => e.source === id).length;
+        {(d.componentType === 'squad' || d.componentType === 'intent_squad') && (() => {
+          const AGENT_TYPES = new Set(['agent', 'validation_loop', 'critic_actor', 'guard']);
+          const agentCount = edges.filter((e) => {
+            if (e.source !== id) return false;
+            const tgt = nodes.find((n) => n.id === e.target);
+            return tgt ? AGENT_TYPES.has((tgt.data as NodeData).componentType) : false;
+          }).length;
           if (agentCount === 0) return null;
           const collapsed = !!d.collapsed;
           return (

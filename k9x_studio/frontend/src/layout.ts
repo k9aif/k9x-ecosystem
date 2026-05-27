@@ -10,6 +10,7 @@ const V_GAP   = 40;
 
 // Fixed X columns per tier
 const LEVEL_X: Record<string, number> = {
+  intent_squad:    -80,
   router:          150,
   orchestrator:    420,
   squad:           700,
@@ -93,13 +94,14 @@ export function applyHierarchyLayout(
     cursor += subtreeHeight(rootId) + V_GAP * 3;
   });
 
-  // Position agent nodes fanned vertically to the right of their squad
+  // Position agent nodes fanned vertically to the right of their squad or intent_squad
   const squadAgentMap: Record<string, string[]> = {};
   edges.forEach((e) => {
     const src = nodes.find((n) => n.id === e.source);
     const tgt = nodes.find((n) => n.id === e.target);
     if (!src || !tgt) return;
-    if ((src.data as NodeData).componentType !== 'squad') return;
+    const srcType = (src.data as NodeData).componentType;
+    if (srcType !== 'squad' && srcType !== 'intent_squad') return;
     if (!AGENT_TYPES.has((tgt.data as NodeData).componentType)) return;
     squadAgentMap[e.source] = squadAgentMap[e.source] ?? [];
     if (!squadAgentMap[e.source].includes(e.target)) {

@@ -7,6 +7,15 @@ from pathlib import Path
 # Make sure `backend` package is importable when run from k9x_studio/
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+# Load .env from studio root if present
+try:
+    from dotenv import load_dotenv
+    _env_path = Path(__file__).resolve().parent.parent / ".env"
+    if _env_path.exists():
+        load_dotenv(_env_path)
+except ImportError:
+    pass
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles

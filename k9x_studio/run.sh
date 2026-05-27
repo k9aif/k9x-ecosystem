@@ -29,9 +29,9 @@ if [ ! -d "$SCRIPT_DIR/frontend/node_modules" ]; then
 fi
 
 # ── Start backend ─────────────────────────────────────────────
-echo "[k9x_studio] Starting backend on http://localhost:8080"
+echo "[k9x_studio] Starting backend on http://localhost:8090"
 cd "$SCRIPT_DIR"
-uvicorn backend.main:app --host 0.0.0.0 --port 8080 --reload &
+uvicorn backend.main:app --host 0.0.0.0 --port 8090 --reload &
 BACKEND_PID=$!
 
 # ── Start frontend ────────────────────────────────────────────
@@ -43,7 +43,7 @@ FRONTEND_PID=$!
 echo ""
 echo "  k9x_studio running:"
 echo "  Frontend → http://localhost:5173"
-echo "  Backend  → http://localhost:8080"
+echo "  Backend  → http://localhost:8090"
 echo ""
 echo "  Press Ctrl+C to stop."
 

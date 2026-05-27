@@ -1,7 +1,17 @@
 # SPDX-License-Identifier: Apache-2.0
 # k9x_studio API routes
 
-from fastapi import APIRouter, HTTPException, UploadFile, File
+import os as _os
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form
+
+# Set K9X_BLOCK_LOCAL=true in .env only for public-hosted instances.
+# Default (local / intranet use): localhost endpoints are allowed.
+_BLOCK_LOCAL = _os.environ.get("K9X_BLOCK_LOCAL", "false").lower() == "true"
+_LOCAL_ADDRS = ("localhost", "127.0.0.1", "::1", "0.0.0.0")
+
+
+def _is_local_blocked(endpoint: str) -> bool:
+    return _BLOCK_LOCAL and any(loc in endpoint for loc in _LOCAL_ADDRS)
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from typing import List, Optional
@@ -17,6 +27,14 @@ router = APIRouter()
 # ── Component palette ──────────────────────────────────────────────────────────
 
 PALETTE = [
+    {
+        "type": "intent_squad",
+        "label": "Intent Squad",
+        "abbClass": "IntentSquad",
+        "color": "#06b6d4",
+        "description": "Optional pre-router squad. Contains one IntentAgent that classifies incoming event intent for non-deterministic routing.",
+        "singleton": True,
+    },
     {
         "type": "router",
         "label": "Router",
@@ -77,78 +95,145 @@ def get_components():
 
 # ── Architecture suggestion ────────────────────────────────────────────────────
 
+class LlmSessionConfig(BaseModel):
+    provider: str = "ollama"
+    endpoint: str = ""
+    model: str = ""
+    api_key: str = ""
+
+
 class SuggestRequest(BaseModel):
     project_name: str
     author: str = ""
     domain: str = ""
     description: str = ""
+    llm: Optional[LlmSessionConfig] = None
 
 
 @router.post("/suggest")
 def suggest(req: SuggestRequest):
     """
-    Call Ollama to suggest an initial K9-AIF architecture based on project description.
-    Falls back to a sensible default if LLM is unavailable.
+    Suggest a K9-AIF architecture using the session-provided LLM config.
+    LLM config is transient — passed per-request, never stored on disk.
+    Falls back to a sensible default if no LLM is configured or call fails.
     """
     import json, re, requests as http
+    from backend.services.context_service import get_llm_context
+    _fw = get_llm_context()
 
-    prompt = f"""You are a K9-AIF architect. Suggest a multi-agent architecture for this project.
+    prompt = f"""{_fw}
 
-Project: {req.project_name}
+---
+
+## Project to design
+
+Project name: {req.project_name}
 Domain: {req.domain}
 Description: {req.description}
 
-Return ONLY a JSON object — no explanation, no markdown, no code fences — with this exact structure:
+---
+
+Design a complete K9-AIF multi-agent architecture for this project.
+Identify the distinct workflows in the description — each major workflow becomes a Squad.
+For each Squad define 2–5 agents in execution order.
+
+Return ONLY a JSON object — no explanation, no markdown, no code fences:
 {{
-  "orchestrators": [
-    {{"name": "ExampleOrchestrator"}}
-  ],
-  "squads": [
-    {{"name": "ExampleSquad", "agents": ["AgentOne", "AgentTwo", "AgentThree"]}}
-  ],
+  "orchestrators": [{{"name": "ExampleOrchestrator"}}],
+  "squads": [{{"name": "ExampleSquad", "agents": ["AgentOne", "AgentTwo", "AgentThree"]}}],
   "agents": [
-    {{"name": "AgentOne", "type": "BaseAgent", "model": "general", "description": "What this agent does"}},
-    {{"name": "AgentTwo", "type": "K9ValidationLoopAgent", "model": "reasoning", "description": "What this agent does"}},
-    {{"name": "AgentThree", "type": "BaseAgent", "model": "general", "description": "What this agent does"}}
+    {{"name": "AgentOne", "type": "BaseAgent", "model": "general", "description": "Triage and classify incoming requests"}},
+    {{"name": "AgentTwo", "type": "K9ValidationLoopAgent", "model": "reasoning", "description": "Iteratively validates business rules until confidence threshold is met"}},
+    {{"name": "AgentThree", "type": "K9CriticActorAgent", "model": "reasoning", "description": "Drafts and refines the output report"}}
   ]
 }}
 
-Rules:
-- All agent names must end with "Agent"
-- Use K9ValidationLoopAgent for agents that need iterative verification or confidence scoring
-- Use K9CriticActorAgent for agents that generate and refine output (drafting, reports, contracts)
-- Use BaseAgent for simple one-shot classification or audit agents
-- Suggest 3-5 agents that make sense for the domain
-- Name everything based on the {req.domain} domain
-
-Return ONLY valid JSON.
+Return ONLY valid JSON. Every agent name in squads[].agents must have a matching entry in agents[].
 """
 
     default = _default_suggestion(req.project_name, req.domain)
 
-    import os
-    ollama_base = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/")
+    import os as _os
+    from backend.services.config_service import get_llm_config
+
+    # Priority: session config (browser UI) → env vars (.env / docker) → config.yaml → no LLM
+    llm = req.llm
+    if llm and llm.endpoint.strip():
+        provider = llm.provider.strip() or "ollama"
+        endpoint = llm.endpoint.strip().rstrip("/")
+        model    = llm.model.strip() or "granite3.3:2b"
+        api_key  = llm.api_key or ""
+    elif _os.environ.get("LLM_ENDPOINT", "").strip():
+        endpoint = _os.environ.get("LLM_ENDPOINT", "").strip().rstrip("/")
+        provider = _os.environ.get("LLM_PROVIDER", "ollama").strip()
+        model    = _os.environ.get("LLM_MODEL", "granite3.3:2b").strip()
+        api_key  = _os.environ.get("LLM_API_KEY", "").strip()
+    else:
+        cfg = get_llm_config()
+        endpoint = cfg.get("endpoint", "").strip().rstrip("/")
+        provider = cfg.get("provider", "ollama")
+        model    = cfg.get("model", "granite3.3:2b")
+        api_key  = cfg.get("api_key", "")
+
+    if not endpoint:
+        return {"suggestion": default, "source": "default"}
+
+    # Normalise scheme — requests requires http:// or https://
+    if not endpoint.startswith(("http://", "https://")):
+        endpoint = "http://" + endpoint
+
+    if _is_local_blocked(endpoint):
+        return {"suggestion": default, "source": "default"}
 
     try:
-        resp = http.post(
-            f"{ollama_base}/api/generate",
-            json={"model": "granite3-dense:2b", "prompt": prompt, "stream": False},
-            timeout=30,
-        )
-        raw = resp.json().get("response", "")
-        # strip markdown fences if present
+        raw = _call_llm(endpoint, provider, model, api_key, prompt)
         raw = re.sub(r"```(?:json)?", "", raw).strip()
-        # extract first JSON object
         match = re.search(r"\{.*\}", raw, re.DOTALL)
         if match:
             suggestion = json.loads(match.group())
-            # validate minimal structure
             if "agents" in suggestion and "squads" in suggestion:
                 return {"suggestion": suggestion, "source": "llm"}
     except Exception:
         pass
 
     return {"suggestion": default, "source": "default"}
+
+
+def _call_llm(endpoint: str, provider: str, model: str, api_key: str, prompt: str) -> str:
+    """Call the configured LLM and return the raw text response. Raises on failure."""
+    import requests as http
+    if provider == "ollama":
+        resp = http.post(
+            f"{endpoint}/api/generate",
+            json={"model": model, "prompt": prompt, "stream": False},
+            timeout=60,
+        )
+        resp.raise_for_status()
+        return resp.json().get("response", "")
+    elif provider in ("openai", "custom"):
+        headers: dict = {"Content-Type": "application/json"}
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+        resp = http.post(
+            f"{endpoint}/chat/completions",
+            headers=headers,
+            json={"model": model, "messages": [{"role": "user", "content": prompt}]},
+            timeout=60,
+        )
+        resp.raise_for_status()
+        return resp.json()["choices"][0]["message"]["content"]
+    elif provider == "anthropic":
+        resp = http.post(
+            f"{endpoint}/v1/messages",
+            headers={"Content-Type": "application/json", "x-api-key": api_key,
+                     "anthropic-version": "2023-06-01"},
+            json={"model": model, "max_tokens": 2048,
+                  "messages": [{"role": "user", "content": prompt}]},
+            timeout=60,
+        )
+        resp.raise_for_status()
+        return resp.json()["content"][0]["text"]
+    raise ValueError(f"Unknown provider: {provider}")
 
 
 def _default_suggestion(project_name: str, domain: str) -> dict:
@@ -174,9 +259,10 @@ def _default_suggestion(project_name: str, domain: str) -> dict:
 # ── BPMN import ───────────────────────────────────────────────────────────────
 
 @router.post("/bpmn/import")
-async def bpmn_import(file: UploadFile = File(...)):
+async def bpmn_import(file: UploadFile = File(...), llm_config: Optional[str] = Form(None)):
     """
     Parse a BPMN 2.0 file or IBM BlueWorks Live ZIP export.
+    If llm_config JSON is provided, uses LLM to intelligently group tasks into squads.
     ZIP: skips .xsd and Glossaries.bpmn, parses the main process .bpmn.
     """
     import io as _io
@@ -209,13 +295,67 @@ async def bpmn_import(file: UploadFile = File(...)):
 
     content = raw.decode("utf-8", errors="replace")
     try:
-        suggestion = parse_bpmn(content)
+        base_suggestion = parse_bpmn(content)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 
     process_name = extract_process_name(content)
+
+    # ── LLM regrouping — if a session LLM config was provided ─────────────────
+    if llm_config:
+        import json as _json, re as _re
+        try:
+            cfg = _json.loads(llm_config)
+            endpoint = cfg.get("endpoint", "").strip().rstrip("/")
+            provider = cfg.get("provider", "ollama").strip()
+            model    = cfg.get("model", "granite3.3:2b").strip()
+            api_key  = cfg.get("api_key", "")
+            if endpoint and not _is_local_blocked(endpoint):
+                if not endpoint.startswith(("http://", "https://")):
+                    endpoint = "http://" + endpoint
+                from backend.services.context_service import get_llm_context as _get_ctx
+                _fw = _get_ctx()
+                agent_names = [a["name"].replace("Agent", "") for a in base_suggestion["agents"]]
+                task_list   = "\n".join(f"- {n}" for n in agent_names)
+                prompt = f"""{_fw}
+
+---
+
+## BPMN tasks to organise into K9-AIF squads
+
+Process: {process_name or 'Process'}
+Tasks extracted from the BPMN diagram:
+{task_list}
+
+Group these tasks into logical squads. Each squad represents a distinct workflow stage.
+Assign the correct agent type to each task based on what it does.
+Never put all tasks in one squad — identify 2–5 logical groupings.
+
+Return ONLY a JSON object — no explanation, no markdown, no code fences:
+{{
+  "orchestrators": [{{"name": "ExampleOrchestrator"}}],
+  "squads": [{{"name": "ExampleSquad", "agents": ["AgentOne", "AgentTwo"]}}],
+  "agents": [{{"name": "AgentOne", "type": "BaseAgent", "model": "general", "description": "What this agent does"}}]
+}}
+
+Every agent name in squads[].agents must have a matching entry in agents[]. Return ONLY valid JSON.
+"""
+                raw_text = _call_llm(endpoint, provider, model, api_key, prompt)
+                raw_text = _re.sub(r"```(?:json)?", "", raw_text).strip()
+                match = _re.search(r"\{.*\}", raw_text, _re.DOTALL)
+                if match:
+                    llm_suggestion = _json.loads(match.group())
+                    if "agents" in llm_suggestion and "squads" in llm_suggestion:
+                        return {
+                            "suggestion": llm_suggestion,
+                            "process_name": process_name,
+                            "source": "bpmn+llm",
+                        }
+        except Exception:
+            pass  # fall through to rule-based result
+
     return {
-        "suggestion": suggestion,
+        "suggestion": base_suggestion,
         "process_name": process_name,
         "source": "bpmn",
     }
@@ -362,6 +502,100 @@ def submit_feedback(req: FeedbackRequest):
     return {"status": "ok"}
 
 
+@router.get("/stats")
+def get_stats():
+    """Increment and return studio visit counter. Stored in projects root."""
+    import json, os, threading
+    _lock = getattr(get_stats, "_lock", None)
+    if _lock is None:
+        get_stats._lock = threading.Lock()  # type: ignore[attr-defined]
+        _lock = get_stats._lock
+
+    projects_root = os.environ.get("K9X_PROJECTS_ROOT", ".")
+    stats_path = Path(projects_root) / "stats.json"
+
+    with _lock:
+        stats: dict = {"visits": 0}
+        if stats_path.exists():
+            try:
+                stats = json.loads(stats_path.read_text())
+            except Exception:
+                stats = {"visits": 0}
+        stats["visits"] = stats.get("visits", 0) + 1
+        try:
+            stats_path.parent.mkdir(parents=True, exist_ok=True)
+            stats_path.write_text(json.dumps(stats))
+        except Exception:
+            pass
+
+    return {"visits": stats["visits"]}
+
+
+@router.post("/llm/verify")
+def verify_llm(req: LlmSessionConfig):
+    """Lightweight connectivity check for a user-supplied LLM endpoint."""
+    import requests as http
+
+    endpoint = req.endpoint.strip().rstrip("/")
+    if not endpoint:
+        raise HTTPException(status_code=400, detail="Endpoint is required")
+    if not endpoint.startswith(("http://", "https://")):
+        endpoint = "http://" + endpoint
+
+    if _is_local_blocked(endpoint):
+        raise HTTPException(status_code=400, detail="Local addresses are not allowed on this instance")
+
+    provider = req.provider.strip() or "ollama"
+    headers: dict = {}
+    if req.api_key:
+        headers["Authorization"] = f"Bearer {req.api_key}"
+
+    try:
+        if provider == "ollama":
+            # POST /api/generate with stream:false — same call OllamaLLM.generate() uses
+            model = req.model.strip() or "llama3.1:latest"
+            r = http.post(
+                f"{endpoint}/api/generate",
+                json={"model": model, "prompt": "hi", "stream": False},
+                timeout=30,
+            )
+            if r.status_code == 404:
+                raise HTTPException(status_code=502, detail=f"Model '{model}' not found on this Ollama server")
+            r.raise_for_status()
+            return {"ok": True, "detail": f"Connected · model {model} responded"}
+
+        elif provider in ("openai", "custom"):
+            r = http.get(f"{endpoint}/models", headers=headers, timeout=8)
+            r.raise_for_status()
+            return {"ok": True, "detail": "Connected"}
+
+        elif provider == "anthropic":
+            # Anthropic has no free health endpoint — send a minimal 1-token message
+            r = http.post(
+                f"{endpoint}/v1/messages",
+                headers={**headers, "x-api-key": req.api_key or "", "anthropic-version": "2023-06-01"},
+                json={"model": req.model or "claude-haiku-4-5-20251001",
+                      "max_tokens": 1, "messages": [{"role": "user", "content": "hi"}]},
+                timeout=12,
+            )
+            if r.status_code in (200, 400, 529):
+                return {"ok": True, "detail": "Connected"}
+            r.raise_for_status()
+            return {"ok": True, "detail": "Connected"}
+
+        else:
+            raise HTTPException(status_code=400, detail=f"Unknown provider: {provider}")
+
+    except http.exceptions.ConnectionError:
+        raise HTTPException(status_code=502, detail=f"Cannot reach {endpoint}")
+    except http.exceptions.Timeout:
+        raise HTTPException(status_code=504, detail="Endpoint timed out")
+    except http.exceptions.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"Endpoint returned {e.response.status_code}")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+
 @router.get("/health")
 def health():
     return {"status": "ok", "service": "k9x_studio"}
@@ -373,7 +607,6 @@ def get_config():
     import os
     return {
         "projects_root": os.environ.get("K9X_PROJECTS_ROOT", ""),
-        "ollama_url": os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434"),
     }
 
 

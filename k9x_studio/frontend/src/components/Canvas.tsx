@@ -79,6 +79,17 @@ export function Canvas({ generating }: CanvasProps) {
       const compJson = e.dataTransfer.getData('application/k9node');
       if (!compJson) return;
       const comp: PaletteComponent = JSON.parse(compJson);
+
+      // Enforce singleton: only one router or intent_squad per architecture
+      if ((comp as any).singleton) {
+        const alreadyExists = nodes.some((n) => (n.data as NodeData).componentType === comp.type);
+        if (alreadyExists) {
+          setRejected(`Only one ${comp.label} allowed per architecture`);
+          setTimeout(() => setRejected(null), 3500);
+          return;
+        }
+      }
+
       const position = screenToFlowPosition({ x: e.clientX, y: e.clientY });
       const id = `${comp.type}-${nodeCounter++}`;
       addNode({
@@ -114,21 +125,43 @@ export function Canvas({ generating }: CanvasProps) {
           } as any);
         }
         onConnect({ source: id, target: kafkaId, sourceHandle: 's-right', targetHandle: 't-left' });
+        // Auto-connect from IntentSquad if one exists
+        const intentSquad = nodes.find((n) => (n.data as NodeData).componentType === 'intent_squad');
+        if (intentSquad) {
+          onConnect({ source: intentSquad.id, target: id, sourceHandle: 's-right', targetHandle: 't-left' });
+        }
+      }
+
+      if (comp.type === 'intent_squad') {
+        // Auto-create IntentAgent inside
+        const agentId = `agent-${nodeCounter++}`;
+        addNode({
+          id: agentId, type: 'k9node',
+          position: { x: position.x, y: position.y + 180 },
+          data: {
+            label: 'IntentAgent', componentType: 'agent' as any,
+            color: '#10b981', abbClass: 'BaseAgent',
+            agentType: 'BaseAgent', model: 'general', pattern: 'reasoning',
+            description: 'Classifies incoming event intent for non-deterministic routing',
+            temperature: '0.3', maxTokens: '2048', llmProvider: 'ollama',
+          } as NodeData,
+        } as any);
+        onConnect({ source: id, target: agentId, sourceHandle: 's-bottom', targetHandle: 't-top' });
       }
 
       // Auto-connect to nearest valid parent node
-      const PARENT_TYPE: Partial<Record<string, string>> = {
-        orchestrator: 'router',
-        squad:        'orchestrator',
-        agent:        'squad',
-        validation_loop: 'squad',
-        critic_actor: 'squad',
-        guard:        'squad',
+      const PARENT_TYPE: Partial<Record<string, string[]>> = {
+        orchestrator:    ['router'],
+        squad:           ['orchestrator'],
+        agent:           ['squad', 'intent_squad'],
+        validation_loop: ['squad', 'intent_squad'],
+        critic_actor:    ['squad', 'intent_squad'],
+        guard:           ['squad'],
       };
-      const parentType = PARENT_TYPE[comp.type];
-      if (parentType) {
+      const parentTypes = PARENT_TYPE[comp.type];
+      if (parentTypes) {
         const candidates = nodes.filter(
-          (n) => (n.data as NodeData).componentType === parentType && !(n.data as NodeData).system
+          (n) => parentTypes.includes((n.data as NodeData).componentType) && !(n.data as NodeData).system
         );
         if (candidates.length > 0) {
           const nearest = candidates.reduce((best, n) => {

@@ -19,6 +19,20 @@ interface Snapshot {
   edges: Edge[];
 }
 
+export interface LlmSessionConfig {
+  provider: string;
+  endpoint: string;
+  model: string;
+  api_key: string;
+}
+
+export interface LogEntry {
+  id: number;
+  ts: string;
+  msg: string;
+  level: 'info' | 'warn' | 'error';
+}
+
 interface StudioStore {
   screen: AppScreen;
   project: ProjectMeta;
@@ -29,6 +43,12 @@ interface StudioStore {
   theme: 'dark' | 'light';
   history: Snapshot[];
   future: Snapshot[];
+  llmConfig: LlmSessionConfig | null;
+  setLlmConfig: (cfg: LlmSessionConfig | null) => void;
+  llmActive: boolean;
+  setLlmActive: (v: boolean) => void;
+  logs: LogEntry[];
+  addLog: (msg: string, level?: 'info' | 'warn' | 'error') => void;
 
   setScreen: (s: AppScreen) => void;
   setProject: (p: ProjectMeta) => void;
@@ -60,6 +80,18 @@ export const useStore = create<StudioStore>((set) => ({
   theme: 'dark',
   history: [],
   future: [],
+  llmConfig: null,
+  setLlmConfig: (cfg) => set({ llmConfig: cfg }),
+  llmActive: false,
+  setLlmActive: (v) => set({ llmActive: v }),
+  logs: [],
+  addLog: (msg, level = 'info') =>
+    set((s) => ({
+      logs: [
+        ...s.logs.slice(-149),
+        { id: Date.now(), ts: new Date().toLocaleTimeString(), msg, level },
+      ],
+    })),
 
   setScreen: (screen) => set({ screen }),
   setProject: (project) => set({ project }),
@@ -192,8 +224,15 @@ export const useStore = create<StudioStore>((set) => ({
       const squad = s.nodes.find((n) => n.id === squadId);
       if (!squad) return s;
       const nowCollapsed = !(squad.data as NodeData).collapsed;
+      const AGENT_TYPES = new Set(['agent', 'validation_loop', 'critic_actor', 'guard']);
       const agentIds = new Set(
-        s.edges.filter((e) => e.source === squadId).map((e) => e.target)
+        s.edges
+          .filter((e) => e.source === squadId)
+          .map((e) => e.target)
+          .filter((tid) => {
+            const t = s.nodes.find((n) => n.id === tid);
+            return t ? AGENT_TYPES.has((t.data as NodeData).componentType) : false;
+          })
       );
       return {
         nodes: s.nodes.map((n) => {
@@ -211,13 +250,22 @@ export const useStore = create<StudioStore>((set) => ({
   collapseAllSquads: () =>
     set((s) => {
       const squadIds = s.nodes
-        .filter((n) => (n.data as NodeData).componentType === 'squad')
+        .filter((n) => ['squad', 'intent_squad'].includes((n.data as NodeData).componentType))
         .map((n) => n.id);
       if (squadIds.length === 0) return s;
+      const AGENT_TYPES = new Set(['agent', 'validation_loop', 'critic_actor', 'guard']);
       let nodes = s.nodes;
       let edges = s.edges;
       squadIds.forEach((squadId) => {
-        const agentIds = new Set(edges.filter((e) => e.source === squadId).map((e) => e.target));
+        const agentIds = new Set(
+          edges
+            .filter((e) => e.source === squadId)
+            .map((e) => e.target)
+            .filter((tid) => {
+              const t = nodes.find((n) => n.id === tid);
+              return t ? AGENT_TYPES.has((t.data as NodeData).componentType) : false;
+            })
+        );
         nodes = nodes.map((n) => {
           if (n.id === squadId) return { ...n, data: { ...n.data, collapsed: true } };
           if (agentIds.has(n.id)) return { ...n, hidden: true };

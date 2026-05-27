@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useStore } from '../store';
+import type { LlmSessionConfig } from '../store';
 import type { AgentClassType } from '../types';
 
 const MODEL_OPTIONS = ['general', 'reasoning', 'chat', 'extraction'];
@@ -57,6 +58,155 @@ function FeedbackPanel() {
   );
 }
 
+const PROVIDER_LABEL: Record<string, string> = {
+  ollama: 'Ollama', openai: 'OpenAI', anthropic: 'Anthropic', custom: 'Custom LLM',
+};
+
+function LlmPanel() {
+  const { llmConfig, setLlmConfig, addLog, setLlmActive } = useStore();
+  const [expanded, setExpanded] = useState(false);
+  const [form, setForm] = useState<LlmSessionConfig>(
+    llmConfig ?? { provider: 'ollama', endpoint: '', model: '', api_key: '' }
+  );
+  const [verifyState, setVerifyState] = useState<'idle' | 'checking' | 'ok' | 'error'>('idle');
+  const [verifyMsg, setVerifyMsg] = useState('');
+
+  const field = (key: keyof LlmSessionConfig) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setForm((f) => ({ ...f, [key]: e.target.value }));
+    setVerifyState('idle');
+    setVerifyMsg('');
+  };
+
+  const apply = async () => {
+    if (!form.endpoint.trim()) { setLlmConfig(null); return; }
+    setVerifyState('checking');
+    const ep = form.endpoint.trim();
+    addLog(`Verifying LLM connection to ${ep} (${form.provider}, model: ${form.model || 'default'})…`);
+    setLlmActive(true);
+    try {
+      const res = await fetch('/api/llm/verify', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      let data: any = {};
+      try { data = await res.json(); } catch { /* non-JSON body */ }
+      if (!res.ok) throw new Error(data.detail ?? `HTTP ${res.status}`);
+      const name = PROVIDER_LABEL[form.provider] ?? form.provider;
+      const detail = data.detail && data.detail !== 'Connected' ? ` · ${data.detail}` : '';
+      setVerifyState('ok');
+      setVerifyMsg(`Connected to ${name}${detail}`);
+      addLog(`✓ LLM connected — ${name}${detail}`);
+      setLlmConfig(form);
+      setExpanded(false);
+    } catch (err: any) {
+      const msg = err.message ?? 'Could not connect';
+      setVerifyState('error');
+      setVerifyMsg(msg);
+      addLog(`✕ LLM verify failed: ${msg}`, 'error');
+      setLlmConfig(null);
+    } finally {
+      setLlmActive(false);
+    }
+  };
+
+  const clear = () => {
+    const empty = { provider: 'ollama', endpoint: '', model: '', api_key: '' };
+    setForm(empty);
+    setLlmConfig(null);
+    setVerifyState('idle');
+    setVerifyMsg('');
+    setExpanded(false);
+  };
+
+  return (
+    <div className="inspector-llm">
+
+      {/* ── Header — always visible ── */}
+      <div className="inspector-llm-header" onClick={() => setExpanded((v) => !v)}>
+        <span className={`llm-status-dot ${verifyState === 'ok' ? 'llm-dot-on' : 'llm-dot-off'}`} />
+        <span className="inspector-llm-title">⬡ LLM Config</span>
+        {verifyState === 'ok'
+          ? <span className="llm-connected-tag">✓ {verifyMsg}</span>
+          : verifyState === 'error'
+            ? <span className="llm-error-tag">✕ {verifyMsg}</span>
+            : <span className="llm-optional-tag">optional</span>
+        }
+        <span className="llm-expand-arrow">{expanded ? '▴' : '▾'}</span>
+      </div>
+
+      {/* ── Expandable fields ── */}
+      {expanded && (
+        <div className="llm-config-fields">
+          <div className="llm-config-row">
+            <label className="llm-config-label">Provider</label>
+            <select className="llm-config-input" value={form.provider} onChange={field('provider')}>
+              <option value="ollama">Ollama</option>
+              <option value="openai">OpenAI-compatible</option>
+              <option value="anthropic">Anthropic</option>
+            </select>
+          </div>
+          <div className="llm-config-row">
+            <label className="llm-config-label">Endpoint</label>
+            <input className="llm-config-input" placeholder="http://192.168.x.x:11434"
+              value={form.endpoint} onChange={field('endpoint')} />
+          </div>
+          <div className="llm-config-row">
+            <label className="llm-config-label">Model</label>
+            <input className="llm-config-input" placeholder="granite3-dense:2b"
+              value={form.model} onChange={field('model')} />
+          </div>
+          <div className="llm-config-row">
+            <label className="llm-config-label">API Key</label>
+            <input className="llm-config-input" type="password" placeholder="leave blank for local LLM"
+              value={form.api_key} onChange={field('api_key')} />
+          </div>
+          <div className="llm-config-actions">
+            <button className="llm-save-btn" onClick={apply} disabled={verifyState === 'checking'}>
+              {verifyState === 'checking' ? '⟳ Verifying…' : 'Apply'}
+            </button>
+            <button className="llm-clear-btn" onClick={clear}>Clear</button>
+          </div>
+          {verifyState === 'error' && (
+            <div className="llm-verify-err">✕ {verifyMsg}</div>
+          )}
+          <div className="llm-session-note">⚠ LLM config entered here is NOT stored · clears on page refresh</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ActivityLog() {
+  const { logs, llmActive } = useStore();
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [logs]);
+
+  return (
+    <div className="activity-log">
+      <div className="activity-log-header">
+        <span className="activity-log-label">Activity Log</span>
+        <span className={`llm-access-dot ${llmActive ? 'llm-access-on' : 'llm-access-off'}`}
+              title={llmActive ? 'LLM active' : 'LLM idle'} />
+      </div>
+      <div className="activity-log-body">
+        {logs.length === 0 && (
+          <div className="activity-log-empty">No activity yet</div>
+        )}
+        {logs.map((entry) => (
+          <div key={entry.id} className={`activity-log-entry log-${entry.level}`}>
+            <span className="log-ts">{entry.ts}</span>
+            <span className="log-msg">{entry.msg}</span>
+          </div>
+        ))}
+        <div ref={bottomRef} />
+      </div>
+    </div>
+  );
+}
+
 export function Inspector() {
   const { nodes, selectedNodeId, updateNodeData } = useStore();
   const node = nodes.find((n) => n.id === selectedNodeId);
@@ -95,6 +245,8 @@ export function Inspector() {
         </div>
         {footer}
         <FeedbackPanel />
+        <LlmPanel />
+        <ActivityLog />
       </aside>
     );
   }
@@ -103,6 +255,7 @@ export function Inspector() {
   const isAgent = ['agent', 'validation_loop', 'critic_actor'].includes(data.componentType);
   const isRouter = data.componentType === 'router';
   const isOrchestrator = data.componentType === 'orchestrator';
+  const isIntentSquad = data.componentType === 'intent_squad';
 
   const set = (key: string, val: string) => updateNodeData(node.id, { [key]: val });
 
@@ -215,6 +368,28 @@ export function Inspector() {
           </>
         )}
 
+        {/* Intent Squad fields */}
+        {isIntentSquad && (
+          <>
+            <div className="inspector-section-label">Intent Classification</div>
+            <div className="inspector-field">
+              <label className="inspector-label">Routing Strategy</label>
+              <select
+                className="inspector-input"
+                value={data.routingStrategy ?? 'intent'}
+                onChange={(e) => set('routingStrategy', e.target.value)}
+              >
+                <option value="intent">intent (non-deterministic)</option>
+                <option value="confidence">confidence threshold</option>
+              </select>
+            </div>
+            <div style={{ fontSize: 10, color: '#4a4a6a', padding: '4px 0 8px 0', lineHeight: 1.5 }}>
+              IntentSquad classifies incoming events before the Router. The IntentAgent
+              enriches the context with a classified intent that the Router uses to route deterministically.
+            </div>
+          </>
+        )}
+
         {/* Router-specific fields */}
         {isRouter && (
           <>
@@ -272,6 +447,8 @@ export function Inspector() {
       </div>
       {footer}
       <FeedbackPanel />
+      <LlmPanel />
+      <ActivityLog />
     </aside>
   );
 }

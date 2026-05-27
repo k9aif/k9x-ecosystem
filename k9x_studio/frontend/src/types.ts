@@ -1,4 +1,5 @@
 export type ComponentType =
+  | 'intent_squad'
   | 'router'
   | 'orchestrator'
   | 'squad'

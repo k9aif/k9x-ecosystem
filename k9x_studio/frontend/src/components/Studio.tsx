@@ -114,6 +114,12 @@ export function Studio() {
     }).catch(() => {});
   }, []);
 
+  // ── Visit counter ────────────────────────────────────────────
+  const [visits, setVisits] = useState<number | null>(null);
+  useEffect(() => {
+    fetch('/api/stats').then((r) => r.json()).then((d) => setVisits(d.visits)).catch(() => {});
+  }, []);
+
   const toHostPath = (containerPath: string) => {
     if (!projectsRoot || !containerPath.startsWith(projectsRoot)) return containerPath;
     const rel = containerPath.slice(projectsRoot.length).replace(/^\//, '');
@@ -122,72 +128,37 @@ export function Studio() {
 
   // ── Export scaffold ──────────────────────────────────────────
   const [exporting, setExporting] = useState(false);
+  const exportingRef = useRef(false);
   const [exportMsg, setExportMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  const [scaffoldDone, setScaffoldDone] = useState<{ path: string; hostPath: string } | null>(null);
-  const [downloading, setDownloading] = useState(false);
 
-  const handleDownload = async () => {
-    if (!scaffoldDone || downloading) return;
-    setDownloading(true);
+  const handleExport = async () => {
+    if (exportingRef.current) return;
+    exportingRef.current = true;
+    setExporting(true);
+    setExportMsg(null);
     try {
-      const res = await fetch('/api/scaffold/download', {
+      const payload = buildProjectPayload(project, nodes as Node<NodeData>[], edges);
+      const res = await fetch('/api/generate', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: scaffoldDone.path }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(await res.text());
       const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
       a.href = url;
       a.download = `${project.project_name.toLowerCase().replace(/\s+/g, '_')}_scaffold.zip`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch (err) {
-      setExportMsg({ ok: false, text: 'Download failed: ' + err });
-      setTimeout(() => setExportMsg(null), 6000);
-    } finally { setDownloading(false); }
-  };
-
-  const handleExport = async () => {
-    const payload = buildProjectPayload(project, nodes as Node<NodeData>[], edges);
-    setExporting(true);
-    setExportMsg(null);
-    try {
-      if (project.project_folder.trim()) {
-        const res = await fetch('/api/generate-to-disk', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...payload, output_path: project.project_folder.trim() }),
-        });
-        if (!res.ok) {
-          let msg = `Server error ${res.status}`;
-          try { const d = await res.json(); msg = d.detail ?? msg; } catch { msg = await res.text() || msg; }
-          throw new Error(msg);
-        }
-        const data = await res.json();
-        setScaffoldDone({ path: data.path, hostPath: toHostPath(data.path) });
-        setExportMsg({ ok: true, text: '✦ Scaffold generated — download ready' });
-        setTimeout(() => setExportMsg(null), 4000);
-      } else {
-        // Download ZIP
-        const res = await fetch('/api/generate', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-        if (!res.ok) throw new Error(await res.text());
-        const blob = await res.blob();
-        const url  = URL.createObjectURL(blob);
-        const a    = document.createElement('a');
-        a.href = url;
-        a.download = `${project.project_name.toLowerCase().replace(/\s+/g, '_')}_scaffold.zip`;
-        a.click();
-        URL.revokeObjectURL(url);
-        setExportMsg({ ok: true, text: 'ZIP downloaded' });
-        setTimeout(() => setExportMsg(null), 4000);
-      }
+      setExportMsg({ ok: true, text: '✦ Scaffold downloaded' });
+      setTimeout(() => setExportMsg(null), 4000);
     } catch (err) {
       setExportMsg({ ok: false, text: 'Export failed: ' + err });
       setTimeout(() => setExportMsg(null), 6000);
-    } finally { setExporting(false); }
+    } finally {
+      setExporting(false);
+      exportingRef.current = false;
+    }
   };
 
   const [showBottom, setShowBottom] = useState(true);
@@ -255,6 +226,13 @@ export function Studio() {
             {showBottom ? 'Hide Files' : 'Show Files'}
           </button>
           <button className="btn-secondary" onClick={clearCanvas}>Clear</button>
+
+          {visits !== null && (
+            <div className="header-visit-counter" title="Studio visits">
+              <span className="visit-count">{visits.toLocaleString()}</span>
+              <span className="visit-label">visits</span>
+            </div>
+          )}
         </div>
       </header>
 
@@ -263,8 +241,7 @@ export function Studio() {
 
         {/* Left pane */}
         <div className="studio-left" style={{ width: leftWidth, minWidth: leftWidth, maxWidth: leftWidth }}>
-          <Palette onDragStart={onDragStart} onExport={handleExport} exporting={exporting}
-                   onDownload={handleDownload} scaffoldReady={scaffoldDone !== null} downloading={downloading} />
+          <Palette onDragStart={onDragStart} onExport={handleExport} exporting={exporting} />
         </div>
 
         {/* Left resize handle */}

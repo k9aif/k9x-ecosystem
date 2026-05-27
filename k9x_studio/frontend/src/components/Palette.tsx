@@ -6,6 +6,7 @@ import { PROJECT_TEMPLATES } from '../templates';
 import type { ProjectTemplate } from '../templates';
 
 const COMPONENT_COLORS: Record<string, string> = {
+  intent_squad: '#06b6d4',
   router: '#6366f1', orchestrator: '#8b5cf6', squad: '#0ea5e9',
   agent: '#10b981', validation_loop: '#f59e0b', critic_actor: '#ef4444', guard: '#64748b',
 };
@@ -16,6 +17,7 @@ const ABB_MAP: Record<string, string> = {
   BaseAgent: 'BaseAgent', K9ValidationLoopAgent: 'K9ValidationLoopAgent', K9CriticActorAgent: 'K9CriticActorAgent',
 };
 const ICONS: Record<string, string> = {
+  intent_squad: '⊕',
   router: '⇄', orchestrator: '◈', squad: '◫', agent: '◉',
   validation_loop: '↻', critic_actor: '⇌', guard: '⊛',
 };
@@ -27,9 +29,6 @@ interface PaletteProps {
   onDragStart: (e: React.DragEvent, component: PaletteComponent) => void;
   onExport: () => void;
   exporting: boolean;
-  onDownload?: () => void;
-  scaffoldReady?: boolean;
-  downloading?: boolean;
 }
 
 type PaletteTab = 'components' | 'project';
@@ -40,13 +39,14 @@ function slugify(s: string) {
   return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
 }
 
-export function Palette({ onDragStart, onExport, exporting, onDownload, scaffoldReady, downloading }: PaletteProps) {
+export function Palette({ onDragStart, onExport, exporting }: PaletteProps) {
   const [tab, setTab] = useState<PaletteTab>('project');
   const [components, setComponents] = useState<PaletteComponent[]>([]);
   const [bpmnStatus, setBpmnStatus] = useState<BpmnStatus>({ state: 'idle' });
   const [projectsRoot, setProjectsRoot] = useState('');
   const { project, setProject, clearCanvas, addNode, onConnect,
-          nodes, selectedNodeId, generating, setGenerating, layoutCanvas, collapseAllSquads } = useStore();
+          nodes, selectedNodeId, generating, setGenerating, layoutCanvas, collapseAllSquads,
+          llmConfig, addLog, setLlmActive } = useStore();
 
   const inContainer = Boolean(projectsRoot);
 
@@ -54,12 +54,11 @@ export function Palette({ onDragStart, onExport, exporting, onDownload, scaffold
     fetch('/api/config')
       .then((r) => r.json())
       .then((cfg) => {
-        if (cfg.projects_root) {
-          setProjectsRoot(cfg.projects_root);
-        }
+        if (cfg.projects_root) setProjectsRoot(cfg.projects_root);
       })
       .catch(() => {});
   }, []);
+
 
   // When container root loads, fix project_folder if it's wrong or empty
   useEffect(() => {
@@ -80,16 +79,8 @@ export function Palette({ onDragStart, onExport, exporting, onDownload, scaffold
 
   const setField = (key: string, val: string) => {
     const updated = { ...project, [key]: val };
-    if (inContainer) {
-      // In container mode: auto-derive output path from project name
-      if (key === 'project_name') {
-        updated.project_folder = containerOutputPath(val);
-      }
-    } else {
-      if (key === 'framework_path' && val.trim()) {
-        const sep = val.trim().endsWith('/') ? '' : '/';
-        updated.project_folder = `${val.trim()}${sep}k9_projects/`;
-      }
+    if (key === 'project_name') {
+      updated.project_folder = containerOutputPath(val);
     }
     setProject(updated);
   };
@@ -103,6 +94,7 @@ export function Palette({ onDragStart, onExport, exporting, onDownload, scaffold
       .then((r) => r.json())
       .then((d) => setComponents(d.components))
       .catch(() => setComponents([
+        { type: 'intent_squad',    label: 'Intent Squad',    abbClass: 'IntentSquad',           color: '#06b6d4', description: 'Pre-router intent classification', singleton: true },
         { type: 'router',          label: 'Router',          abbClass: 'K9EventRouter',        color: '#6366f1', description: 'Routes events to orchestrators', singleton: true },
         { type: 'orchestrator',    label: 'Orchestrator',    abbClass: 'BaseOrchestrator',      color: '#8b5cf6', description: 'Coordinates squad execution' },
         { type: 'squad',           label: 'Squad',           abbClass: 'BaseSquad',             color: '#0ea5e9', description: 'Executes agent flow in sequence' },
@@ -164,17 +156,30 @@ export function Palette({ onDragStart, onExport, exporting, onDownload, scaffold
 
   const handleGenerate = async () => {
     if (generating || !project.description.trim()) return;
+    if (nodes.length > 0 && !window.confirm('Replace the current architecture?')) return;
     setTab('components');
     setGenerating(true);
+    const usingLlm = Boolean(llmConfig?.endpoint?.trim());
+    addLog(usingLlm
+      ? `Generating architecture via LLM (${llmConfig!.endpoint})…`
+      : 'Generating architecture (rule-based, no LLM configured)…');
+    if (usingLlm) setLlmActive(true);
     try {
+      const payload: any = { ...project };
+      if (usingLlm) payload.llm = llmConfig;
       const res = await fetch('/api/suggest', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(project),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
-      if (data.suggestion) buildCanvas(data.suggestion);
-    } catch { /* keep canvas */ }
-    finally { setGenerating(false); }
+      if (data.suggestion) {
+        buildCanvas(data.suggestion);
+        addLog(`Architecture generated · source: ${data.source ?? 'default'}`);
+      }
+    } catch (err: any) {
+      addLog(`Architecture generation failed: ${err.message ?? 'unknown error'}`, 'error');
+    }
+    finally { setGenerating(false); setLlmActive(false); }
   };
 
   return (
@@ -196,6 +201,7 @@ export function Palette({ onDragStart, onExport, exporting, onDownload, scaffold
         </button>
       </div>
 
+
       {/* ── Components tab ─────────────────────────── */}
       {tab === 'components' && (
         <>
@@ -207,8 +213,18 @@ export function Palette({ onDragStart, onExport, exporting, onDownload, scaffold
           {!selectedType && <div className="palette-hint">Drag onto canvas</div>}
 
           <div className="palette-list">
-            {components.map((c) => {
-              const isValidNext = validNextTypes === null || validNextTypes.includes(c.type as ComponentType);
+            {(() => {
+              const singletonUsed = new Set(
+                nodes
+                  .filter((n) => {
+                    const ct = (n.data as NodeData).componentType;
+                    return components.some((c) => c.type === ct && (c as any).singleton);
+                  })
+                  .map((n) => (n.data as NodeData).componentType as string)
+              );
+              return components.map((c) => {
+              const isSingletonUsed = !!(c as any).singleton && singletonUsed.has(c.type as string);
+              const isValidNext = !isSingletonUsed && (validNextTypes === null || validNextTypes.includes(c.type as ComponentType));
               return (
                 <div
                   key={c.type}
@@ -233,7 +249,8 @@ export function Palette({ onDragStart, onExport, exporting, onDownload, scaffold
                   )}
                 </div>
               );
-            })}
+            });
+            })()}
           </div>
 
           <div className="palette-section-title">
@@ -241,6 +258,7 @@ export function Palette({ onDragStart, onExport, exporting, onDownload, scaffold
             <span className="palette-hint-icon" tabIndex={-1}>
               ⓘ
               <span className="palette-hint-tooltip">
+                Intent Squad is optional — use before Router for non-deterministic routing.<br />
                 Squad nodes start collapsed.<br />
                 Click <strong>▶ N agents</strong> on a squad to expand its agents.<br />
                 Click <strong>▼</strong> to collapse again.
@@ -248,6 +266,8 @@ export function Palette({ onDragStart, onExport, exporting, onDownload, scaffold
             </span>
           </div>
           <div className="palette-hierarchy">
+            <div className="hier-line" style={{ color: COMPONENT_COLORS.intent_squad }}>⊕ Intent Squad <span style={{ color: '#4a4a6a', fontSize: 9 }}>optional</span></div>
+            <div className="hier-line hier-indent" style={{ color: COMPONENT_COLORS.agent }}>└ ◉ IntentAgent</div>
             <div className="hier-line" style={{ color: COMPONENT_COLORS.router }}>⇄ Router</div>
             <div className="hier-line hier-indent" style={{ color: COMPONENT_COLORS.orchestrator }}>└ ◈ Orchestrator</div>
             <div className="hier-line hier-indent-2" style={{ color: COMPONENT_COLORS.squad }}>└ ◫ Squad  ▶</div>
@@ -285,6 +305,13 @@ export function Palette({ onDragStart, onExport, exporting, onDownload, scaffold
                   setBpmnStatus({ state: 'loading' });
                   const fd = new FormData();
                   fd.append('file', file);
+                  if (llmConfig?.endpoint?.trim()) {
+                    fd.append('llm_config', JSON.stringify(llmConfig));
+                    addLog(`BPMN import — using LLM (${llmConfig.endpoint}) to group tasks…`);
+                    setLlmActive(true);
+                  } else {
+                    addLog(`BPMN import — rule-based (no LLM configured)`);
+                  }
                   try {
                     const res = await fetch('/api/bpmn/import', { method: 'POST', body: fd });
                     const data = await res.json();
@@ -296,10 +323,14 @@ export function Palette({ onDragStart, onExport, exporting, onDownload, scaffold
                     }
                     buildCanvas(data.suggestion);
                     setTab('components');
+                    addLog(`BPMN imported · source: ${data.source ?? 'bpmn'}`);
                     setBpmnStatus({ state: 'ok', name: file.name });
                     setTimeout(() => setBpmnStatus({ state: 'idle' }), 4000);
                   } catch (err: any) {
+                    addLog(`BPMN import failed: ${err.message ?? 'unknown'}`, 'error');
                     setBpmnStatus({ state: 'error', msg: err.message ?? 'Import failed' });
+                  } finally {
+                    setLlmActive(false);
                   }
                 }}
               />
@@ -318,47 +349,46 @@ export function Palette({ onDragStart, onExport, exporting, onDownload, scaffold
           {/* Template picker */}
           <div className="palette-templates">
             <div className="palette-project-label">Start from template</div>
-            <div className="palette-template-grid">
+            <select
+              className="palette-template-select"
+              defaultValue=""
+              onChange={async (e) => {
+                const val = e.target.value;
+                e.target.value = '';
+                const t = val === 'surprise'
+                  ? PROJECT_TEMPLATES[Math.floor(Math.random() * PROJECT_TEMPLATES.length)]
+                  : PROJECT_TEMPLATES.find((x) => x.id === val);
+                if (!t) return;
+                const updated = { ...project, project_name: t.name, domain: t.domain, description: t.description };
+                setProject(updated);
+                setTab('components');
+                setGenerating(true);
+                try {
+                  if (t.suggestion) {
+                    buildCanvas(t.suggestion);
+                  } else {
+                    const res = await fetch('/api/suggest', {
+                      method: 'POST', headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify(updated),
+                    });
+                    const data = await res.json();
+                    if (data.suggestion) buildCanvas(data.suggestion);
+                  }
+                } catch { /* keep canvas */ }
+                finally { setGenerating(false); }
+              }}
+            >
+              <option value="" disabled>— pick a template —</option>
+              <option value="surprise">🎲  Surprise me</option>
               {PROJECT_TEMPLATES.map((t: ProjectTemplate) => (
-                <button
-                  key={t.id}
-                  className="palette-template-card"
-                  title={t.description.slice(0, 120) + '…'}
-                  onClick={async () => {
-                    const updated = {
-                      ...project,
-                      project_name: t.name,
-                      domain: t.domain,
-                      description: t.description,
-                    };
-                    setProject(updated);
-                    setTab('components');
-                    setGenerating(true);
-                    try {
-                      if (t.suggestion) {
-                        buildCanvas(t.suggestion);
-                      } else {
-                        const res = await fetch('/api/suggest', {
-                          method: 'POST', headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify(updated),
-                        });
-                        const data = await res.json();
-                        if (data.suggestion) buildCanvas(data.suggestion);
-                      }
-                    } catch { /* keep canvas */ }
-                    finally { setGenerating(false); }
-                  }}
-                >
-                  <span className="template-icon">{t.icon}</span>
-                  <span className="template-name">{t.name}</span>
-                </button>
+                <option key={t.id} value={t.id}>{t.icon}  {t.name}</option>
               ))}
-            </div>
+            </select>
           </div>
 
           <div className="palette-platforms">
             <div className="palette-project-label">Platforms &amp; Frameworks</div>
-            <div className="platform-group-label">IBM watsonx</div>
+            <div className="platform-group-label" style={{ color: '#4589ff', marginTop: 8 }}>IBM watsonx</div>
             <div className="platform-pills">
               {([
                 { id: 'watsonx-assistant',   label: 'Assistant',   color: '#4589ff' },
@@ -385,7 +415,7 @@ export function Palette({ onDragStart, onExport, exporting, onDownload, scaffold
                 );
               })}
             </div>
-            <div className="platform-group-label" style={{ marginTop: 8 }}>Agent Frameworks</div>
+            <div className="platform-group-label" style={{ marginTop: 8, color: '#4a9660' }}>Agent Frameworks</div>
             <div className="platform-pills">
               {([
                 { id: 'crewai',    label: 'CrewAI',    color: '#ff6b35' },
@@ -434,71 +464,6 @@ export function Palette({ onDragStart, onExport, exporting, onDownload, scaffold
                 onChange={(e) => setField('domain', e.target.value)}
               />
             </div>
-            {inContainer ? (
-              <>
-                <div className="palette-container-path-info">
-                  <div className="palette-container-path-label">Scaffold output</div>
-                  <code className="palette-container-path">{project.project_folder || containerOutputPath(project.project_name)}</code>
-                  <div className="palette-container-path-hint">
-                    on your machine: <code>~/k9x-studio-working/k9_projects/{slugify(project.project_name) || '…'}/</code>
-                  </div>
-                </div>
-                <div className="palette-project-sublabel">k9-aif-framework path on your machine</div>
-                <input
-                  className="palette-project-input palette-project-folder"
-                  placeholder="~/k9-aif-framework"
-                  value={project.framework_path}
-                  onChange={(e) => setField('framework_path', e.target.value)}
-                />
-                <div className="palette-folder-hint">Written into the generated .env so your project can find it at runtime</div>
-              </>
-            ) : (
-              <>
-                <div className="palette-project-folder-row">
-                  <input
-                    className="palette-project-input palette-project-folder"
-                    placeholder="/path/to/output/folder"
-                    value={project.project_folder}
-                    onChange={(e) => setField('project_folder', e.target.value)}
-                  />
-                  <button
-                    className="palette-browse-btn"
-                    title="Browse for folder"
-                    onClick={async () => {
-                      try {
-                        const dir = await (window as any).showDirectoryPicker({ mode: 'readwrite' });
-                        setField('project_folder', dir.name);
-                      } catch { /* cancelled or unsupported */ }
-                    }}
-                  >⋯</button>
-                </div>
-                {project.project_folder && (
-                  <div className="palette-folder-hint">→ <code>{project.project_folder}</code></div>
-                )}
-                <div className="palette-project-sublabel">K9-AIF Framework Location</div>
-                <div className="palette-project-folder-row">
-                  <input
-                    className="palette-project-input palette-project-folder"
-                    placeholder="~/path/to/k9-aif-framework"
-                    value={project.framework_path}
-                    onChange={(e) => setField('framework_path', e.target.value)}
-                  />
-                  <button
-                    className="palette-browse-btn"
-                    title="Browse for k9-aif-framework folder"
-                    onClick={async () => {
-                      try {
-                        const dir = await (window as any).showDirectoryPicker({ mode: 'read' });
-                        setField('framework_path', dir.name);
-                      } catch { /* cancelled or unsupported */ }
-                    }}
-                  >⋯</button>
-                </div>
-                {project.framework_path && (
-                  <div className="palette-folder-hint">→ <code>{project.framework_path}</code></div>
-                )}
-              </>
-            )}
           </div>
 
           <div className="palette-describe">
@@ -508,13 +473,16 @@ export function Palette({ onDragStart, onExport, exporting, onDownload, scaffold
               value={project.description}
               onChange={(e) => setField('description', e.target.value)}
               placeholder={
-                'Describe the multi-agent system in detail.\n\n' +
-                'Example: A luxury Porsche dealership wants AI-driven inventory management across new, CPO, and trade-in vehicles — with aging prediction, showroom optimisation, and pricing recommendations.'
+                'Enter your description here…\n\n' +
+                'Describe what your multi-agent system should do. Be specific about the domain, workflows, and decisions the agents will handle.\n\n' +
+                'Example: A luxury car dealership wants AI-driven inventory management across new, CPO, and trade-in vehicles — with aging prediction, showroom optimisation, and pricing recommendations.'
               }
               rows={10}
             />
             <div className="palette-no-llm-note">
-              ⊙ No LLM required — canvas, scaffold, and all generated artifacts are produced locally without internet or AI access.
+              {llmConfig?.endpoint
+                ? `⊙ LLM connected · suggestions use ${llmConfig.provider}`
+                : '⊙ Demo mode · configure LLM in the right panel for AI-powered suggestions'}
             </div>
           </div>
         </>
@@ -532,19 +500,12 @@ export function Palette({ onDragStart, onExport, exporting, onDownload, scaffold
         <button
           className="palette-scaffold-btn"
           onClick={onExport}
-          disabled={exporting || nodes.length === 0 || !project.project_folder.trim()}
-          title={!project.project_folder.trim() ? 'Set a project folder first' : 'Write scaffold to disk'}
+          disabled={exporting || nodes.length === 0 || !project.project_name.trim()}
+          title={!project.project_name.trim() ? 'Set a project name first' : 'Generate and download scaffold ZIP'}
         >
-          {exporting ? '⟳  Writing…' : '⬆  Generate Scaffold'}
+          {exporting ? '⟳  Generating…' : '⬇  Generate Scaffold'}
         </button>
-        <button
-          className="palette-download-btn"
-          onClick={onDownload}
-          disabled={!scaffoldReady || downloading}
-          title={!scaffoldReady ? 'Generate scaffold first' : 'Download scaffold as ZIP'}
-        >
-          {downloading ? '⟳  Downloading…' : '⬇  Download Generated Code'}
-        </button>
+
       </div>
     </aside>
   );
