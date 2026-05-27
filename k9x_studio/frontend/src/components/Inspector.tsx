@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useStore } from '../store';
 import type { AgentClassType } from '../types';
 
@@ -7,6 +8,54 @@ const AGENT_TYPE_OPTIONS: AgentClassType[] = ['BaseAgent', 'K9ValidationLoopAgen
 const LLM_PROVIDERS = ['ollama', 'openai', 'anthropic', 'azure_openai'];
 const ROUTING_STRATEGIES = ['event_type', 'intent', 'round_robin', 'load_balanced'];
 const RETRY_POLICIES = ['none', 'fixed_delay', 'exponential_backoff'];
+
+function FeedbackPanel() {
+  const { project } = useStore();
+  const [text, setText] = useState('');
+  const [status, setStatus] = useState<'idle' | 'sending' | 'done' | 'error'>('idle');
+
+  const submit = async () => {
+    if (!text.trim() || status === 'sending') return;
+    setStatus('sending');
+    try {
+      await fetch('/api/feedback', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: text.trim(), project: project.project_name }),
+      });
+      setText('');
+      setStatus('done');
+      setTimeout(() => setStatus('idle'), 3000);
+    } catch {
+      setStatus('error');
+      setTimeout(() => setStatus('idle'), 3000);
+    }
+  };
+
+  return (
+    <div className="inspector-feedback">
+      <div className="inspector-feedback-label">Feedback</div>
+      <textarea
+        className="inspector-feedback-textarea"
+        placeholder="Feedback, suggestions, expected features…"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        rows={3}
+        disabled={status === 'sending'}
+      />
+      {status === 'done' && <div className="inspector-feedback-ok">Thank you</div>}
+      {status === 'error' && <div className="inspector-feedback-err">Could not send</div>}
+      {status !== 'done' && (
+        <button
+          className="inspector-feedback-btn"
+          onClick={submit}
+          disabled={!text.trim() || status === 'sending'}
+        >
+          {status === 'sending' ? 'Sending…' : 'Submit feedback'}
+        </button>
+      )}
+    </div>
+  );
+}
 
 export function Inspector() {
   const { nodes, selectedNodeId, updateNodeData } = useStore();
@@ -40,6 +89,7 @@ export function Inspector() {
           <p>Select a node to configure it</p>
         </div>
         {footer}
+        <FeedbackPanel />
       </aside>
     );
   }
@@ -216,6 +266,7 @@ export function Inspector() {
         </div>
       </div>
       {footer}
+      <FeedbackPanel />
     </aside>
   );
 }

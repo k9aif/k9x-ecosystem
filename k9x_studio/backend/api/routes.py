@@ -332,6 +332,36 @@ def download_scaffold(req: ScaffoldDownloadRequest):
     )
 
 
+class FeedbackRequest(BaseModel):
+    text: str
+    project: str = ""
+
+
+@router.post("/feedback")
+def submit_feedback(req: FeedbackRequest):
+    """Append feedback entry to feedback.jsonl in the projects root."""
+    import json, os
+    from datetime import datetime, timezone
+
+    text = req.text.strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="Feedback text is required")
+
+    projects_root = os.environ.get("K9X_PROJECTS_ROOT", ".")
+    feedback_dir = Path(projects_root) / "feedback"
+    feedback_dir.mkdir(parents=True, exist_ok=True)
+
+    entry = {
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "project": req.project or "",
+        "text": text,
+    }
+    with open(feedback_dir / "feedback.jsonl", "a") as f:
+        f.write(json.dumps(entry) + "\n")
+
+    return {"status": "ok"}
+
+
 @router.get("/health")
 def health():
     return {"status": "ok", "service": "k9x_studio"}
