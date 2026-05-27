@@ -589,7 +589,7 @@ html, body, #root {
 }
 .inspector-feedback-label {
   font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
-  text-transform: uppercase; color: #7a2a2a; margin-bottom: 8px;
+  text-transform: uppercase; color: #c04040; margin-bottom: 8px;
 }
 .inspector-feedback-textarea {
   width: 100%; box-sizing: border-box;
@@ -604,12 +604,12 @@ html, body, #root {
 .inspector-feedback-textarea:focus { border-color: #6a5c2a; }
 .inspector-feedback-btn {
   margin-top: 8px; width: 100%;
-  background: transparent; border: 1px solid #7a2a2a;
+  background: transparent; border: 1px solid #c04040;
   border-radius: 6px; padding: 7px 0;
-  color: #7a2a2a; font-size: 11px; cursor: pointer;
+  color: #c04040; font-size: 11px; cursor: pointer;
   transition: all 0.15s;
 }
-.inspector-feedback-btn:hover:not(:disabled) { border-color: #b04040; color: #b04040; }
+.inspector-feedback-btn:hover:not(:disabled) { border-color: #e05050; color: #e05050; }
 .inspector-feedback-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 .inspector-feedback-ok { font-size: 11px; color: #8ab870; margin-top: 6px; text-align: center; }
 .inspector-feedback-err { font-size: 11px; color: #b87070; margin-top: 6px; text-align: center; }
