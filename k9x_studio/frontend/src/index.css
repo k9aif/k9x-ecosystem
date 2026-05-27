@@ -507,10 +507,24 @@ html, body, #root {
   flex-shrink: 0;
   display: flex; align-items: center; gap: 6px;
 }
+.inspector-cop-lights {
+  margin-left: auto; display: flex; align-items: center; gap: 5px;
+}
+.cop-light {
+  width: 6px; height: 6px; border-radius: 50%;
+  opacity: 0.15;
+}
+.cop-red   { background: #e05050; animation: cop-pulse 3.6s 0.0s ease-in-out infinite; }
+.cop-amber { background: #e09030; animation: cop-pulse 3.6s 1.2s ease-in-out infinite; }
+.cop-green { background: #50b870; animation: cop-pulse 3.6s 2.4s ease-in-out infinite; }
+@keyframes cop-pulse {
+  0%, 100% { opacity: 0.12; }
+  50%       { opacity: 0.65; }
+}
 
 .inspector.empty .inspector-empty-msg {
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  color: var(--text-dim); gap: 8px;
+  color: #7070a0; gap: 8px; font-size: 13px;
 }
 .inspector-empty-icon { font-size: 28px; }
 
@@ -551,54 +565,54 @@ html, body, #root {
 }
 .inspector-footer-title {
   font-size: 9px; font-weight: 700; letter-spacing: 0.1em;
-  text-transform: uppercase; color: #4a4a80; margin-bottom: 7px;
+  text-transform: uppercase; color: #8080b0; margin-bottom: 7px;
 }
 .inspector-footer-body {
-  font-size: 11px; color: #4a4a78; line-height: 1.6; margin-bottom: 10px;
+  font-size: 11px; color: #7070a0; line-height: 1.6; margin-bottom: 10px;
 }
 .inspector-footer-tool {
-  color: #6366f1; font-weight: 600;
+  color: #818cf8; font-weight: 600;
 }
 .inspector-footer-links {
   display: flex; align-items: center; gap: 6px;
   font-size: 10px;
 }
 .inspector-footer-links a {
-  color: #5050a0; text-decoration: none; transition: color 0.15s;
+  color: #7878b8; text-decoration: none; transition: color 0.15s;
 }
 .inspector-footer-links a:hover { color: #a5b4fc; }
-.inspector-footer-dot { color: #2a2a44; }
+.inspector-footer-dot { color: #4a4a70; }
 
 .inspector-feedback {
   padding: 14px 14px 18px;
-  border-top: 1px solid #1a1a30;
+  border-top: 1px solid #2a1a1a;
 }
 .inspector-feedback-label {
-  font-size: 10px; font-weight: 600; letter-spacing: 0.08em;
-  text-transform: uppercase; color: #3a3a60; margin-bottom: 8px;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; color: #7a2a2a; margin-bottom: 8px;
 }
 .inspector-feedback-textarea {
   width: 100%; box-sizing: border-box;
-  background: #0c0c1a; border: 1px solid #1e1e38;
-  border-radius: 6px; padding: 8px 10px;
-  color: #6060a0; font-size: 12px; line-height: 1.5;
+  background: #0e0e08; border: 1px solid #3a3420;
+  border-radius: 6px; padding: 10px 12px;
+  color: #c8b86a; font-size: 12px; line-height: 1.6;
   resize: none; outline: none;
   font-family: inherit;
   transition: border-color 0.15s;
 }
-.inspector-feedback-textarea::placeholder { color: #2e2e50; }
-.inspector-feedback-textarea:focus { border-color: #2e2e58; color: #8080b0; }
+.inspector-feedback-textarea::placeholder { color: #5a5030; }
+.inspector-feedback-textarea:focus { border-color: #6a5c2a; }
 .inspector-feedback-btn {
   margin-top: 8px; width: 100%;
-  background: transparent; border: 1px solid #1e1e38;
+  background: transparent; border: 1px solid #7a2a2a;
   border-radius: 6px; padding: 7px 0;
-  color: #3a3a60; font-size: 11px; cursor: pointer;
+  color: #7a2a2a; font-size: 11px; cursor: pointer;
   transition: all 0.15s;
 }
-.inspector-feedback-btn:hover:not(:disabled) { border-color: #3a3a60; color: #6060a0; }
-.inspector-feedback-btn:disabled { opacity: 0.35; cursor: not-allowed; }
-.inspector-feedback-ok { font-size: 11px; color: #4a7a5a; margin-top: 6px; text-align: center; }
-.inspector-feedback-err { font-size: 11px; color: #7a4a4a; margin-top: 6px; text-align: center; }
+.inspector-feedback-btn:hover:not(:disabled) { border-color: #b04040; color: #b04040; }
+.inspector-feedback-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.inspector-feedback-ok { font-size: 11px; color: #8ab870; margin-top: 6px; text-align: center; }
+.inspector-feedback-err { font-size: 11px; color: #b87070; margin-top: 6px; text-align: center; }
 
 .inspector-icon { color: #f59e0b; }
 .inspector-section-label {

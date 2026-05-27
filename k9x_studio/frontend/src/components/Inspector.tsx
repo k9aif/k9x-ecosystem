@@ -39,7 +39,7 @@ function FeedbackPanel() {
         placeholder="Feedback, suggestions, expected features…"
         value={text}
         onChange={(e) => setText(e.target.value)}
-        rows={3}
+        rows={6}
         disabled={status === 'sending'}
       />
       {status === 'done' && <div className="inspector-feedback-ok">Thank you</div>}
@@ -83,7 +83,12 @@ export function Inspector() {
       <aside className="inspector empty">
         <div className="inspector-header">
           <span className="inspector-icon">⊛</span> K9X Inspector
-        </div>
+        <span className="inspector-cop-lights">
+          <span className="cop-light cop-red" />
+          <span className="cop-light cop-amber" />
+          <span className="cop-light cop-green" />
+        </span>
+</div>
         <div className="inspector-empty-msg">
           <div className="inspector-empty-icon">◎</div>
           <p>Select a node to configure it</p>

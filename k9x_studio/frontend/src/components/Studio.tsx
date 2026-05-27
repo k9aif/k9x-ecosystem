@@ -165,6 +165,8 @@ export function Studio() {
         }
         const data = await res.json();
         setScaffoldDone({ path: data.path, hostPath: toHostPath(data.path) });
+        setExportMsg({ ok: true, text: '✦ Scaffold generated — download ready' });
+        setTimeout(() => setExportMsg(null), 4000);
       } else {
         // Download ZIP
         const res = await fetch('/api/generate', {
@@ -295,34 +297,6 @@ export function Studio() {
         </div>
       </div>
 
-      {/* ── Scaffold complete banner ────────────────────────────── */}
-      {scaffoldDone && (
-        <div className="scaffold-done-overlay" onClick={() => setScaffoldDone(null)}>
-          <div className="scaffold-done-card" onClick={(e) => e.stopPropagation()}>
-            <div className="scaffold-done-icon">✦</div>
-            <div className="scaffold-done-title">Scaffold Generated</div>
-            <div className="scaffold-done-path">{scaffoldDone.hostPath}</div>
-            {scaffoldDone.hostPath !== scaffoldDone.path && (
-              <div className="scaffold-done-container-path">container: {scaffoldDone.path}</div>
-            )}
-            <div className="scaffold-done-body">
-              Your work in K9X Studio is complete.<br />
-              Move this folder into your project alongside <code>k9-aif-framework</code> and open in VS Code.
-            </div>
-            <div className="scaffold-done-rec">
-              Recommended next step
-              <span className="scaffold-done-tool">VS Code + Claude Code</span>
-            </div>
-            <div className="scaffold-done-hint">
-              Open the project folder in VS Code, launch Claude Code,<br />
-              and the framework's <code>CLAUDE.md</code> will guide it through the K9-AIF patterns.
-            </div>
-            <button className="scaffold-done-btn" onClick={() => setScaffoldDone(null)}>
-              Back to Studio
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
