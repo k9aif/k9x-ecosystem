@@ -48,7 +48,6 @@ export function Palette({ onDragStart, onExport, exporting }: PaletteProps) {
           nodes, selectedNodeId, generating, setGenerating, layoutCanvas, collapseAllSquads,
           llmConfig, addLog, setLlmActive } = useStore();
 
-  const inContainer = Boolean(projectsRoot);
 
   useEffect(() => {
     fetch('/api/config')
