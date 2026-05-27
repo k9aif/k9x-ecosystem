@@ -317,18 +317,9 @@ export function Studio() {
               Open the project folder in VS Code, launch Claude Code,<br />
               and the framework's <code>CLAUDE.md</code> will guide it through the K9-AIF patterns.
             </div>
-            <div className="scaffold-done-actions">
-              <button
-                className="scaffold-download-btn"
-                onClick={handleDownload}
-                disabled={downloading}
-              >
-                {downloading ? '⟳  Downloading…' : '⬇  Download Generated Code'}
-              </button>
-              <button className="scaffold-done-btn" onClick={() => setScaffoldDone(null)}>
-                Back to Studio
-              </button>
-            </div>
+            <button className="scaffold-done-btn" onClick={() => setScaffoldDone(null)}>
+              Back to Studio
+            </button>
           </div>
         </div>
       )}
