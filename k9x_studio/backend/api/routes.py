@@ -306,8 +306,12 @@ def generate_to_disk(project: ProjectDef):
     return {"status": "ok", "path": str(out_dir)}
 
 
+class ScaffoldDownloadRequest(BaseModel):
+    path: str
+
+
 @router.post("/scaffold/download")
-def download_scaffold(req: VerifyRequest):
+def download_scaffold(req: ScaffoldDownloadRequest):
     """Stream a ZIP of an already-written scaffold directory."""
     import io as _io
     path = Path(req.path).expanduser().resolve()
