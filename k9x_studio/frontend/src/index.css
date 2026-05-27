@@ -846,7 +846,7 @@ html, body, #root {
 }
 .palette-project-label {
   font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
-  text-transform: uppercase; color: #9090b8;
+  text-transform: uppercase; color: #c8c8e8;
   margin-bottom: 1px;
 }
 .palette-project-sublabel {
@@ -976,7 +976,7 @@ html, body, #root {
 }
 .platform-group-label {
   font-size: 9px; font-weight: 700; letter-spacing: 0.1em;
-  text-transform: uppercase; color: #6060a0; margin-bottom: 5px;
+  text-transform: uppercase; color: #c8c8e8; margin-bottom: 5px;
 }
 .platform-pills {
   display: flex; flex-wrap: wrap; gap: 5px;
@@ -984,11 +984,11 @@ html, body, #root {
 .platform-pill {
   font-size: 10px; font-weight: 500;
   padding: 3px 9px; border-radius: 12px;
-  border: 1px solid #2a2a44; background: transparent;
-  color: #6060a0; cursor: pointer;
+  border: 1px solid #3a3a5a; background: transparent;
+  color: #c8b86a; cursor: pointer;
   transition: all 0.15s; letter-spacing: 0.02em;
 }
-.platform-pill:hover { border-color: #4040a0; color: #9090c8; }
+.platform-pill:hover { border-color: #c8b86a; color: #e0d080; }
 .platform-pill-active { font-weight: 600; }
 
 /* ── Palette: description + generate ────────────────────────── */
