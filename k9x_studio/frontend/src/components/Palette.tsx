@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { PaletteComponent, ComponentType, NodeData } from '../types';
 import { useStore } from '../store';
 import { VALID_TARGETS, VALID_NEXT_LABEL } from '../rules';
@@ -33,7 +33,6 @@ interface PaletteProps {
 
 type PaletteTab = 'components' | 'project';
 
-type BpmnStatus = { state: 'idle' } | { state: 'loading' } | { state: 'ok'; name: string } | { state: 'error'; msg: string };
 
 function slugify(s: string) {
   return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
@@ -42,11 +41,13 @@ function slugify(s: string) {
 export function Palette({ onDragStart, onExport, exporting }: PaletteProps) {
   const [tab, setTab] = useState<PaletteTab>('project');
   const [components, setComponents] = useState<PaletteComponent[]>([]);
-  const [bpmnStatus, setBpmnStatus] = useState<BpmnStatus>({ state: 'idle' });
   const [projectsRoot, setProjectsRoot] = useState('');
+  const [lastTemplate, setLastTemplate] = useState<ProjectTemplate | null>(null);
+  const isFirstRender = useRef(true);
   const { project, setProject, clearCanvas, addNode, onConnect,
-          nodes, selectedNodeId, generating, setGenerating, layoutCanvas, collapseAllSquads,
-          llmConfig, addLog, setLlmActive } = useStore();
+          nodes, selectedNodeId, setGenerating, layoutCanvas, collapseAllSquads,
+          llmConfig, addLog, setLastTemplateSuggestion,
+          reapplyTemplate, pendingCanvasSuggestion, setPendingCanvasSuggestion } = useStore();
 
 
   useEffect(() => {
@@ -78,22 +79,37 @@ export function Palette({ onDragStart, onExport, exporting }: PaletteProps) {
 
   const setField = (key: string, val: string) => {
     const updated = { ...project, [key]: val };
-    if (key === 'project_name') {
-      updated.project_folder = containerOutputPath(val);
-    }
+    if (key === 'project_name') updated.project_folder = containerOutputPath(val);
     setProject(updated);
   };
+  void setField; // used by BPMN import path via setProject indirectly
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId);
   const selectedType = selectedNode ? (selectedNode.data as NodeData).componentType : null;
   const validNextTypes: ComponentType[] | null = selectedType ? VALID_TARGETS[selectedType] : null;
 
   useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return; }
+    if (lastTemplate?.suggestion) {
+      buildCanvas(lastTemplate.suggestion);
+      addLog(`↺ Reset to template: ${lastTemplate.name}`);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reapplyTemplate]);
+
+  useEffect(() => {
+    if (!pendingCanvasSuggestion) return;
+    buildCanvas(pendingCanvasSuggestion);
+    setPendingCanvasSuggestion(null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingCanvasSuggestion]);
+
+  useEffect(() => {
     fetch('/api/components')
       .then((r) => r.json())
       .then((d) => setComponents(d.components))
       .catch(() => setComponents([
-        { type: 'intent_squad',    label: 'Intent Squad',    abbClass: 'IntentSquad',           color: '#06b6d4', description: 'Pre-router intent classification', singleton: true },
+        { type: 'intent_squad',    label: 'Intent Orchestrator', abbClass: 'IntentOrchestrator', color: '#06b6d4', description: 'Kafka consumer on intent.in — classifies unknown events and re-routes to domain topic', singleton: true },
         { type: 'router',          label: 'Router',          abbClass: 'K9EventRouter',        color: '#6366f1', description: 'Routes events to orchestrators', singleton: true },
         { type: 'orchestrator',    label: 'Orchestrator',    abbClass: 'BaseOrchestrator',      color: '#8b5cf6', description: 'Coordinates squad execution' },
         { type: 'squad',           label: 'Squad',           abbClass: 'BaseSquad',             color: '#0ea5e9', description: 'Executes agent flow in sequence' },
@@ -151,34 +167,6 @@ export function Palette({ onDragStart, onExport, exporting }: PaletteProps) {
       layoutCanvas();
       setTimeout(() => collapseAllSquads(), 60);
     }, 50);
-  };
-
-  const handleGenerate = async () => {
-    if (generating || !project.description.trim()) return;
-    if (nodes.length > 0 && !window.confirm('Replace the current architecture?')) return;
-    setTab('components');
-    setGenerating(true);
-    const usingLlm = Boolean(llmConfig?.endpoint?.trim());
-    addLog(usingLlm
-      ? `Generating architecture via LLM (${llmConfig!.endpoint})…`
-      : 'Generating architecture (rule-based, no LLM configured)…');
-    if (usingLlm) setLlmActive(true);
-    try {
-      const payload: any = { ...project };
-      if (usingLlm) payload.llm = llmConfig;
-      const res = await fetch('/api/suggest', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      if (data.suggestion) {
-        buildCanvas(data.suggestion);
-        addLog(`Architecture generated · source: ${data.source ?? 'default'}`);
-      }
-    } catch (err: any) {
-      addLog(`Architecture generation failed: ${err.message ?? 'unknown error'}`, 'error');
-    }
-    finally { setGenerating(false); setLlmActive(false); }
   };
 
   return (
@@ -265,8 +253,9 @@ export function Palette({ onDragStart, onExport, exporting }: PaletteProps) {
             </span>
           </div>
           <div className="palette-hierarchy">
-            <div className="hier-line" style={{ color: COMPONENT_COLORS.intent_squad }}>⊕ Intent Squad <span style={{ color: '#4a4a6a', fontSize: 9 }}>optional</span></div>
-            <div className="hier-line hier-indent" style={{ color: COMPONENT_COLORS.agent }}>└ ◉ IntentAgent</div>
+            <div className="hier-line" style={{ color: COMPONENT_COLORS.intent_squad }}>⊕ Intent Orchestrator <span style={{ color: '#4a4a6a', fontSize: 9 }}>optional</span></div>
+            <div className="hier-line hier-indent" style={{ color: COMPONENT_COLORS.squad }}>└ ◫ IntentSquad</div>
+            <div className="hier-line hier-indent-2" style={{ color: COMPONENT_COLORS.agent }}>└ ◉ K9IntentAgent</div>
             <div className="hier-line" style={{ color: COMPONENT_COLORS.router }}>⇄ Router</div>
             <div className="hier-line hier-indent" style={{ color: COMPONENT_COLORS.orchestrator }}>└ ◈ Orchestrator</div>
             <div className="hier-line hier-indent-2" style={{ color: COMPONENT_COLORS.squad }}>└ ◫ Squad  ▶</div>
@@ -278,73 +267,6 @@ export function Palette({ onDragStart, onExport, exporting }: PaletteProps) {
       {/* ── Project Info tab ───────────────────────── */}
       {tab === 'project' && (
         <>
-          {/* BPMN import */}
-          <div className="palette-bpmn-import">
-            <div className="palette-project-label">Import BPMN</div>
-            <label className="palette-bpmn-label">
-              <span className={`palette-bpmn-btn ${bpmnStatus.state === 'loading' ? 'palette-bpmn-loading' : ''}`}>
-                {bpmnStatus.state === 'loading' ? '⟳ Importing…' : '⬆ Browse for .bpmn / .xml / .zip'}
-              </span>
-              <input
-                type="file"
-                accept=".bpmn,.xml,.zip,application/xml,text/xml,application/zip"
-                style={{ display: 'none' }}
-                disabled={bpmnStatus.state === 'loading'}
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  e.target.value = '';
-                  if (!file) return;
-
-                  const ext = file.name.split('.').pop()?.toLowerCase();
-                  if (ext !== 'bpmn' && ext !== 'xml' && ext !== 'zip') {
-                    setBpmnStatus({ state: 'error', msg: `"${file.name}" is not a .bpmn, .xml, or .zip file` });
-                    return;
-                  }
-
-                  setBpmnStatus({ state: 'loading' });
-                  const fd = new FormData();
-                  fd.append('file', file);
-                  if (llmConfig?.endpoint?.trim()) {
-                    fd.append('llm_config', JSON.stringify(llmConfig));
-                    addLog(`BPMN import — using LLM (${llmConfig.endpoint}) to group tasks…`);
-                    setLlmActive(true);
-                  } else {
-                    addLog(`BPMN import — rule-based (no LLM configured)`);
-                  }
-                  try {
-                    const res = await fetch('/api/bpmn/import', { method: 'POST', body: fd });
-                    const data = await res.json();
-                    if (!res.ok) {
-                      throw new Error(data.detail ?? `Server error ${res.status}`);
-                    }
-                    if (data.process_name) {
-                      setProject({ ...project, project_name: data.process_name });
-                    }
-                    buildCanvas(data.suggestion);
-                    setTab('components');
-                    addLog(`BPMN imported · source: ${data.source ?? 'bpmn'}`);
-                    setBpmnStatus({ state: 'ok', name: file.name });
-                    setTimeout(() => setBpmnStatus({ state: 'idle' }), 4000);
-                  } catch (err: any) {
-                    addLog(`BPMN import failed: ${err.message ?? 'unknown'}`, 'error');
-                    setBpmnStatus({ state: 'error', msg: err.message ?? 'Import failed' });
-                  } finally {
-                    setLlmActive(false);
-                  }
-                }}
-              />
-            </label>
-            {bpmnStatus.state === 'error' && (
-              <div className="palette-bpmn-error">✕ {bpmnStatus.msg}</div>
-            )}
-            {bpmnStatus.state === 'ok' && (
-              <div className="palette-bpmn-ok">✓ Imported: {bpmnStatus.name}</div>
-            )}
-            {bpmnStatus.state === 'idle' && (
-              <div className="palette-bpmn-hint">IBM BlueWorks Live (ZIP) · Camunda · Bizagi</div>
-            )}
-          </div>
-
           {/* Template picker */}
           <div className="palette-templates">
             <div className="palette-project-label">Start from template</div>
@@ -358,7 +280,13 @@ export function Palette({ onDragStart, onExport, exporting }: PaletteProps) {
                   ? PROJECT_TEMPLATES[Math.floor(Math.random() * PROJECT_TEMPLATES.length)]
                   : PROJECT_TEMPLATES.find((x) => x.id === val);
                 if (!t) return;
-                const updated = { ...project, project_name: t.name, domain: t.domain, description: t.description };
+                setLastTemplate(t);
+                if (t.suggestion) setLastTemplateSuggestion(t.suggestion);
+                const updated = { ...project, project_name: t.name, domain: t.domain, description: t.description,
+                  ...(t.vision       ? { vision:       t.vision }       : {}),
+                  ...(t.current_state ? { current_state: t.current_state } : {}),
+                  ...(t.target_goals  ? { target_goals:  t.target_goals }  : {}),
+                };
                 setProject(updated);
                 setTab('components');
                 setGenerating(true);
@@ -441,61 +369,16 @@ export function Palette({ onDragStart, onExport, exporting }: PaletteProps) {
             </div>
           </div>
 
-          <div className="palette-project">
-            <div className="palette-project-label">Project</div>
-            <input
-              className="palette-project-input"
-              placeholder="Project name *"
-              value={project.project_name}
-              onChange={(e) => setField('project_name', e.target.value)}
-            />
-            <div className="palette-project-row">
-              <input
-                className="palette-project-input"
-                placeholder="Author"
-                value={project.author}
-                onChange={(e) => setField('author', e.target.value)}
-              />
-              <input
-                className="palette-project-input"
-                placeholder="Domain"
-                value={project.domain}
-                onChange={(e) => setField('domain', e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="palette-describe">
-            <div className="palette-describe-label">Description</div>
-            <textarea
-              className="palette-describe-textarea"
-              value={project.description}
-              onChange={(e) => setField('description', e.target.value)}
-              placeholder={
-                'Enter your description here…\n\n' +
-                'Describe what your multi-agent system should do. Be specific about the domain, workflows, and decisions the agents will handle.\n\n' +
-                'Example: A luxury car dealership wants AI-driven inventory management across new, CPO, and trade-in vehicles — with aging prediction, showroom optimisation, and pricing recommendations.'
-              }
-              rows={10}
-            />
-            <div className="palette-no-llm-note">
-              {llmConfig?.endpoint
-                ? `⊙ LLM connected · suggestions use ${llmConfig.provider}`
-                : '⊙ Demo mode · configure LLM in the right panel for AI-powered suggestions'}
-            </div>
+          <div className="palette-no-llm-note" style={{ marginTop: 8 }}>
+            {llmConfig?.endpoint
+              ? `⊙ LLM connected · suggestions use ${llmConfig.provider}`
+              : '⊙ Demo mode · configure LLM in the right panel for AI-powered suggestions'}
           </div>
         </>
       )}
 
       {/* ── CTA buttons — always pinned at bottom ──────── */}
       <div className="palette-generate-footer">
-        <button
-          className="palette-generate-btn-green"
-          onClick={handleGenerate}
-          disabled={generating || !project.description.trim() || !project.project_name.trim()}
-        >
-          {generating ? '⟳  Generating…' : '✦  Generate Architecture'}
-        </button>
         <button
           className="palette-scaffold-btn"
           onClick={onExport}

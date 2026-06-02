@@ -7,7 +7,11 @@ import { Canvas } from './Canvas';
 import { Inspector } from './Inspector';
 import { BottomPanel } from './BottomPanel';
 import { GeneratingOverlay } from './GeneratingOverlay';
+import { IntakePanel } from './IntakePanel';
+import { DocsPanel } from './DocsPanel';
 import type { NodeData, ProjectMeta } from '../types';
+
+type CenterTab = 'intake' | 'canvas' | 'flow' | 'docs';
 
 function buildProjectPayload(
   project: ProjectMeta,
@@ -53,8 +57,14 @@ function buildProjectPayload(
 export function Studio() {
   const {
     project, nodes, edges, clearCanvas, generating,
-    history, future, undo, redo, layoutCanvas,
+    history, future, undo, redo, layoutCanvas, setScreen, addGeneratedDoc,
+    lastTemplateSuggestion, triggerReapply,
   } = useStore();
+
+  const handleLogout = () => {
+    sessionStorage.removeItem('k9x_authed');
+    setScreen('splash');
+  };
 
   // ── Keyboard shortcuts ───────────────────────────────────────
   useEffect(() => {
@@ -114,11 +124,6 @@ export function Studio() {
     }).catch(() => {});
   }, []);
 
-  // ── Visit counter ────────────────────────────────────────────
-  const [visits, setVisits] = useState<number | null>(null);
-  useEffect(() => {
-    fetch('/api/stats').then((r) => r.json()).then((d) => setVisits(d.visits)).catch(() => {});
-  }, []);
 
   const toHostPath = (containerPath: string) => {
     if (!projectsRoot || !containerPath.startsWith(projectsRoot)) return containerPath;
@@ -145,11 +150,12 @@ export function Studio() {
       if (!res.ok) throw new Error(await res.text());
       const blob = await res.blob();
       const url  = URL.createObjectURL(blob);
+      const zipName = `${project.project_name.toLowerCase().replace(/\s+/g, '_')}_scaffold.zip`;
       const a    = document.createElement('a');
       a.href = url;
-      a.download = `${project.project_name.toLowerCase().replace(/\s+/g, '_')}_scaffold.zip`;
+      a.download = zipName;
       a.click();
-      URL.revokeObjectURL(url);
+      addGeneratedDoc(zipName, url);
       setExportMsg({ ok: true, text: '✦ Scaffold downloaded' });
       setTimeout(() => setExportMsg(null), 4000);
     } catch (err) {
@@ -162,6 +168,7 @@ export function Studio() {
   };
 
   const [showBottom, setShowBottom] = useState(true);
+  const [centerTab, setCenterTab] = useState<CenterTab>('intake');
   const [draggedComponent, setDraggedComponent] = useState<any>(null);
 
   const onDragStart = useCallback((e: React.DragEvent, comp: any) => {
@@ -227,12 +234,11 @@ export function Studio() {
           </button>
           <button className="btn-secondary" onClick={clearCanvas}>Clear</button>
 
-          {visits !== null && (
-            <div className="header-visit-counter" title="Studio visits">
-              <span className="visit-count">{visits.toLocaleString()}</span>
-              <span className="visit-label">visits</span>
-            </div>
-          )}
+          <div className="header-sep" />
+          <div className="header-user">
+            <span className="header-username">demo</span>
+            <button className="header-logout" onClick={handleLogout} title="Sign out">↪ Sign out</button>
+          </div>
         </div>
       </header>
 
@@ -257,11 +263,50 @@ export function Studio() {
         {/* Center */}
         <ReactFlowProvider>
           <div className="studio-center">
-            <div className="canvas-area">
-              <Canvas draggedComponent={draggedComponent} generating={generating} />
-              <GeneratingOverlay visible={generating} />
+
+            {/* Center tabs */}
+            <div className="center-tabs">
+              {([
+                { id: 'intake', label: 'Intake' },
+                { id: 'canvas', label: 'Canvas' },
+                { id: 'flow',   label: 'Graph' },
+                { id: 'docs',   label: 'Generated Docs' },
+              ] as { id: CenterTab; label: string }[]).map(({ id, label }) => (
+                <button
+                  key={id}
+                  className={`center-tab ${centerTab === id ? 'center-tab-active' : ''}`}
+                  onClick={() => setCenterTab(id)}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
-            {showBottom && <BottomPanel />}
+
+            {centerTab === 'canvas' && (
+              <>
+                <div className="canvas-area">
+                  <Canvas draggedComponent={draggedComponent} generating={generating} />
+                  <GeneratingOverlay visible={generating} />
+                  {nodes.length > 0 && (
+                    <button
+                      className="canvas-reset-btn"
+                      onClick={() => lastTemplateSuggestion ? triggerReapply() : clearCanvas()}
+                      title={lastTemplateSuggestion ? 'Reset to template' : 'Clear canvas'}
+                    >↺ Reset</button>
+                  )}
+                </div>
+                {showBottom && <BottomPanel />}
+              </>
+            )}
+
+            {centerTab === 'intake' && <IntakePanel onSwitchTab={(t) => setCenterTab(t as any)} />}
+
+            {centerTab === 'flow' && (
+              <div className="center-placeholder">Visual Flow — coming soon</div>
+            )}
+
+            {centerTab === 'docs' && <DocsPanel />}
+
           </div>
         </ReactFlowProvider>
 

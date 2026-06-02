@@ -49,6 +49,16 @@ interface StudioStore {
   setLlmActive: (v: boolean) => void;
   logs: LogEntry[];
   addLog: (msg: string, level?: 'info' | 'warn' | 'error') => void;
+  lastTemplateSuggestion: any;
+  setLastTemplateSuggestion: (s: any) => void;
+  reapplyTemplate: boolean;
+  triggerReapply: () => void;
+  pendingCanvasSuggestion: any;
+  setPendingCanvasSuggestion: (s: any) => void;
+  specImported: boolean;
+  setSpecImported: (v: boolean) => void;
+  generatedDocs: { name: string; content: string; ts: string }[];
+  addGeneratedDoc: (name: string, content: string) => void;
 
   setScreen: (s: AppScreen) => void;
   setProject: (p: ProjectMeta) => void;
@@ -71,8 +81,8 @@ interface StudioStore {
 const MAX_HISTORY = 50;
 
 export const useStore = create<StudioStore>((set) => ({
-  screen: 'studio',
-  project: { project_name: '', author: '', domain: '', description: '', project_folder: '', framework_path: '', platforms: [] },
+  screen: 'splash',
+  project: { project_name: '', app_name: '', author: '', domain: '', description: '', project_folder: '', framework_path: '', platforms: [] },
   nodes: [],
   edges: [],
   selectedNodeId: null,
@@ -90,6 +100,23 @@ export const useStore = create<StudioStore>((set) => ({
       logs: [
         ...s.logs.slice(-149),
         { id: Date.now(), ts: new Date().toLocaleTimeString(), msg, level },
+      ],
+    })),
+
+  lastTemplateSuggestion: null as any,
+  setLastTemplateSuggestion: (s: any) => set({ lastTemplateSuggestion: s }),
+  reapplyTemplate: false,
+  triggerReapply: () => set((s) => ({ reapplyTemplate: !s.reapplyTemplate })),
+  pendingCanvasSuggestion: null as any,
+  setPendingCanvasSuggestion: (s: any) => set({ pendingCanvasSuggestion: s }),
+  specImported: false,
+  setSpecImported: (v: boolean) => set({ specImported: v }),
+  generatedDocs: [],
+  addGeneratedDoc: (name, content) =>
+    set((s) => ({
+      generatedDocs: [
+        { name, content, ts: new Date().toLocaleTimeString() },
+        ...s.generatedDocs.filter((d) => d.name !== name),
       ],
     })),
 
