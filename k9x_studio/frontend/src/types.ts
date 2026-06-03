@@ -42,6 +42,7 @@ export interface NodeData extends Record<string, unknown> {
 
 export interface ProjectMeta {
   project_name: string;
+  app_name: string;
   author: string;
   domain: string;
   description: string;
@@ -50,4 +51,4 @@ export interface ProjectMeta {
   platforms: string[];
 }
 
-export type AppScreen = 'setup' | 'studio';
+export type AppScreen = 'splash' | 'setup' | 'studio';

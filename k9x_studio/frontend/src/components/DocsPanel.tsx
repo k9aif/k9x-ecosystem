@@ -21,13 +21,20 @@ interface DocFile {
 }
 
 export function DocsPanel() {
-  const { project, generatedDocs } = useStore();
+  const { project, generatedDocs, removeGeneratedDoc } = useStore();
   const [docs, setDocs] = useState<DocFile[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const handleDelete = async (path: string) => {
+    try {
+      await fetch(`/api/delete-file?path=${encodeURIComponent(path)}`, { method: 'DELETE' });
+      setDocs((prev) => prev.filter((f) => f.path !== path));
+    } catch { /* silent */ }
+  };
+
   useEffect(() => {
-    if (!project.project_folder) return;
+    if (!project.project_folder || !project.project_name) return;
     setLoading(true);
     fetch(`/api/docs?folder=${encodeURIComponent(project.project_folder)}`)
       .then((r) => r.json())
@@ -62,6 +69,7 @@ export function DocsPanel() {
               <span className="docs-name">{d.name}</span>
               <span className="docs-size" style={{ color: '#4a7ab5' }}>{d.ts}</span>
               <button className="docs-download-btn" onClick={() => downloadDoc(d.name, d.content)} title="Download">⬇</button>
+              <button className="docs-delete-btn" onClick={() => removeGeneratedDoc(d.name)} title="Remove">🗑</button>
             </div>
           ))}
         </div>
@@ -89,6 +97,11 @@ export function DocsPanel() {
                 download={f.name}
                 title="Download"
               >⬇</a>
+              <button
+                className="docs-delete-btn"
+                onClick={() => handleDelete(f.path)}
+                title="Delete"
+              >🗑</button>
             </div>
           ))}
         </div>

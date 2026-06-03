@@ -6,18 +6,18 @@ import type { NodeData } from './types';
 // Agent positions are computed separately so they render correctly on expand.
 
 const NODE_H  = 80;
-const V_GAP   = 40;
+const V_GAP   = 50;
 
-// Fixed X columns per tier
+// Fixed X columns per tier — wider spacing to accommodate long node names
 const LEVEL_X: Record<string, number> = {
   intent_squad:    -80,
   router:          150,
-  orchestrator:    420,
-  squad:           700,
-  agent:           980,
-  validation_loop: 980,
-  critic_actor:    980,
-  guard:           980,
+  orchestrator:    480,
+  squad:           820,
+  agent:           1160,
+  validation_loop: 1160,
+  critic_actor:    1160,
+  guard:           1160,
   system:          150,
 };
 

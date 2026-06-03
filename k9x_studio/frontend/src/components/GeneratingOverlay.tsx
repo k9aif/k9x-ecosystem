@@ -7,28 +7,27 @@ interface Step {
 }
 
 const STEPS: Step[] = [
-  // Phase 1: Generation
-  { delay: 0,    text: 'Reading project description…',                          phase: 'gen' },
-  { delay: 700,  text: 'Loading K9-AIF Framework ABBs…',                       phase: 'gen' },
-  { delay: 1400, text: 'Applying Architecture-First principles…',               phase: 'gen' },
-  { delay: 2200, text: 'Identifying agent patterns…',                           phase: 'gen' },
-  { delay: 3000, text: 'Composing Router → Orchestrator → Squad hierarchy…',   phase: 'gen' },
-  { delay: 3800, text: 'Selecting agent types (Base, ValidationLoop, Critic)…', phase: 'gen' },
-  { delay: 4600, text: 'Wiring governance and observability hooks…',            phase: 'gen' },
-  { delay: 5300, text: 'Generating architecture…',                              phase: 'gen' },
-  // Phase 2: K9X Inspector validation
-  { delay: 6200, text: 'K9X Inspector: Analysing component hierarchy…',        phase: 'inspect' },
-  { delay: 7200, text: 'Verifying Router → Orchestrator → Squad connections…', phase: 'inspect' },
-  { delay: 8100, text: 'Checking governance and zero-trust constraints…',       phase: 'inspect' },
-  { delay: 9000, text: 'Validating agent pattern assignments…',                 phase: 'inspect' },
+  // Phase 1: Analysis
+  { delay: 0,    text: 'Parsing spec document…',                                phase: 'gen' },
+  { delay: 800,  text: 'Extracting agent definitions from spec…',               phase: 'gen' },
+  { delay: 1800, text: 'Running rule-based analysis…',                          phase: 'gen' },
+  { delay: 2800, text: 'Calling LLM for intelligent grouping…',                 phase: 'gen' },
+  { delay: 4000, text: 'Scoring rule-based output…',                            phase: 'gen' },
+  { delay: 5000, text: 'Scoring LLM output…',                                   phase: 'gen' },
+  { delay: 6000, text: 'Comparing results — selecting best output…',            phase: 'gen' },
+  { delay: 7000, text: 'Building canvas from winner…',                          phase: 'gen' },
+  // Phase 2: Validation
+  { delay: 8000, text: 'Verifying Router → Orchestrator → Squad connections…', phase: 'inspect' },
+  { delay: 9000, text: 'Validating agent zone assignments (GREEN/AMBER/RED)…',  phase: 'inspect' },
   { delay: 9800, text: 'Architecture validated ✓',                              phase: 'inspect' },
 ];
 
 interface Props {
   visible: boolean;
+  result?: { winner: string; winnerScore: number; winnerAgents: number; winnerSquads: number } | null;
 }
 
-export function GeneratingOverlay({ visible }: Props) {
+export function GeneratingOverlay({ visible, result }: Props) {
   const [visibleSteps, setVisibleSteps] = useState<number[]>([]);
 
   useEffect(() => {
@@ -96,6 +95,15 @@ export function GeneratingOverlay({ visible }: Props) {
           })}
         </div>
 
+        {result && (
+          <div style={{
+            margin: '12px 0 4px', padding: '8px 12px',
+            background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)',
+            borderRadius: 6, fontSize: 12, color: '#6ee7b7', textAlign: 'center',
+          }}>
+            ✓ <strong>{result.winner}</strong> selected · {result.winnerAgents} agents · {result.winnerSquads} squads · score {result.winnerScore}
+          </div>
+        )}
         <div className="gen-footer">
           Powered by K9-AIF Architecture-First Framework · k9x.ai
         </div>

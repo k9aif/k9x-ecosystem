@@ -1,211 +1,12 @@
-import { useState, useEffect, useRef } from 'react';
 import { useStore } from '../store';
-import type { LlmSessionConfig } from '../store';
 import type { AgentClassType } from '../types';
 
 const MODEL_OPTIONS = ['general', 'reasoning', 'chat', 'extraction'];
 const PATTERN_OPTIONS = ['reasoning', 'extraction', 'chat', 'guardrails'];
 const AGENT_TYPE_OPTIONS: AgentClassType[] = ['BaseAgent', 'K9ValidationLoopAgent', 'K9CriticActorAgent'];
-const LLM_PROVIDERS = ['ollama', 'openai', 'anthropic', 'azure_openai'];
-const ROUTING_STRATEGIES = ['event_type', 'intent', 'round_robin', 'load_balanced'];
+const ROUTING_STRATEGIES = ['event_type', 'intent'];
 const RETRY_POLICIES = ['none', 'fixed_delay', 'exponential_backoff'];
 
-function FeedbackPanel() {
-  const { project } = useStore();
-  const [text, setText] = useState('');
-  const [status, setStatus] = useState<'idle' | 'sending' | 'done' | 'error'>('idle');
-
-  const submit = async () => {
-    if (!text.trim() || status === 'sending') return;
-    setStatus('sending');
-    try {
-      await fetch('/api/feedback', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: text.trim(), project: project.project_name }),
-      });
-      setText('');
-      setStatus('done');
-      setTimeout(() => setStatus('idle'), 3000);
-    } catch {
-      setStatus('error');
-      setTimeout(() => setStatus('idle'), 3000);
-    }
-  };
-
-  return (
-    <div className="inspector-feedback">
-      <div className="inspector-feedback-label">Feedback</div>
-      <textarea
-        className="inspector-feedback-textarea"
-        placeholder="Feedback, suggestions, expected features…"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        rows={6}
-        disabled={status === 'sending'}
-      />
-      {status === 'done' && <div className="inspector-feedback-ok">Thank you</div>}
-      {status === 'error' && <div className="inspector-feedback-err">Could not send</div>}
-      {status !== 'done' && (
-        <button
-          className="inspector-feedback-btn"
-          onClick={submit}
-          disabled={!text.trim() || status === 'sending'}
-        >
-          {status === 'sending' ? 'Sending…' : 'Submit feedback'}
-        </button>
-      )}
-    </div>
-  );
-}
-
-const PROVIDER_LABEL: Record<string, string> = {
-  ollama: 'Ollama', openai: 'OpenAI', anthropic: 'Anthropic', custom: 'Custom LLM',
-};
-
-function LlmPanel() {
-  const { llmConfig, setLlmConfig, addLog, setLlmActive } = useStore();
-  const [expanded, setExpanded] = useState(false);
-  const [form, setForm] = useState<LlmSessionConfig>(
-    llmConfig ?? { provider: 'ollama', endpoint: '', model: '', api_key: '' }
-  );
-  const [verifyState, setVerifyState] = useState<'idle' | 'checking' | 'ok' | 'error'>('idle');
-  const [verifyMsg, setVerifyMsg] = useState('');
-
-  const field = (key: keyof LlmSessionConfig) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setForm((f) => ({ ...f, [key]: e.target.value }));
-    setVerifyState('idle');
-    setVerifyMsg('');
-  };
-
-  const apply = async () => {
-    if (!form.endpoint.trim()) { setLlmConfig(null); return; }
-    setVerifyState('checking');
-    const ep = form.endpoint.trim();
-    addLog(`Verifying LLM connection to ${ep} (${form.provider}, model: ${form.model || 'default'})…`);
-    setLlmActive(true);
-    try {
-      const res = await fetch('/api/llm/verify', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      });
-      let data: any = {};
-      try { data = await res.json(); } catch { /* non-JSON body */ }
-      if (!res.ok) throw new Error(data.detail ?? `HTTP ${res.status}`);
-      const name = PROVIDER_LABEL[form.provider] ?? form.provider;
-      const detail = data.detail && data.detail !== 'Connected' ? ` · ${data.detail}` : '';
-      setVerifyState('ok');
-      setVerifyMsg(`Connected to ${name}${detail}`);
-      addLog(`✓ LLM connected — ${name}${detail}`);
-      setLlmConfig(form);
-      setExpanded(false);
-    } catch (err: any) {
-      const msg = err.message ?? 'Could not connect';
-      setVerifyState('error');
-      setVerifyMsg(msg);
-      addLog(`✕ LLM verify failed: ${msg}`, 'error');
-      setLlmConfig(null);
-    } finally {
-      setLlmActive(false);
-    }
-  };
-
-  const clear = () => {
-    const empty = { provider: 'ollama', endpoint: '', model: '', api_key: '' };
-    setForm(empty);
-    setLlmConfig(null);
-    setVerifyState('idle');
-    setVerifyMsg('');
-    setExpanded(false);
-  };
-
-  return (
-    <div className="inspector-llm">
-
-      {/* ── Header — always visible ── */}
-      <div className="inspector-llm-header" onClick={() => setExpanded((v) => !v)}>
-        <span className={`llm-status-dot ${verifyState === 'ok' ? 'llm-dot-on' : 'llm-dot-off'}`} />
-        <span className="inspector-llm-title">⬡ LLM Config</span>
-        {verifyState === 'ok'
-          ? <span className="llm-connected-tag">✓ {verifyMsg}</span>
-          : verifyState === 'error'
-            ? <span className="llm-error-tag">✕ {verifyMsg}</span>
-            : <span className="llm-optional-tag">optional</span>
-        }
-        <span className="llm-expand-arrow">{expanded ? '▴' : '▾'}</span>
-      </div>
-
-      {/* ── Expandable fields ── */}
-      {expanded && (
-        <div className="llm-config-fields">
-          <div className="llm-config-row">
-            <label className="llm-config-label">Provider</label>
-            <select className="llm-config-input" value={form.provider} onChange={field('provider')}>
-              <option value="ollama">Ollama</option>
-              <option value="openai">OpenAI-compatible</option>
-              <option value="anthropic">Anthropic</option>
-            </select>
-          </div>
-          <div className="llm-config-row">
-            <label className="llm-config-label">Endpoint</label>
-            <input className="llm-config-input" placeholder="http://192.168.x.x:11434"
-              value={form.endpoint} onChange={field('endpoint')} />
-          </div>
-          <div className="llm-config-row">
-            <label className="llm-config-label">Model</label>
-            <input className="llm-config-input" placeholder="granite3-dense:2b"
-              value={form.model} onChange={field('model')} />
-          </div>
-          <div className="llm-config-row">
-            <label className="llm-config-label">API Key</label>
-            <input className="llm-config-input" type="password" placeholder="leave blank for local LLM"
-              value={form.api_key} onChange={field('api_key')} />
-          </div>
-          <div className="llm-config-actions">
-            <button className="llm-save-btn" onClick={apply} disabled={verifyState === 'checking'}>
-              {verifyState === 'checking' ? '⟳ Verifying…' : 'Apply'}
-            </button>
-            <button className="llm-clear-btn" onClick={clear}>Clear</button>
-          </div>
-          {verifyState === 'error' && (
-            <div className="llm-verify-err">✕ {verifyMsg}</div>
-          )}
-          <div className="llm-session-note">⚠ LLM config entered here is NOT stored · clears on page refresh</div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ActivityLog() {
-  const { logs, llmActive } = useStore();
-  const bottomRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [logs]);
-
-  return (
-    <div className="activity-log">
-      <div className="activity-log-header">
-        <span className="activity-log-label">Activity Log</span>
-        <span className={`llm-access-dot ${llmActive ? 'llm-access-on' : 'llm-access-off'}`}
-              title={llmActive ? 'LLM active' : 'LLM idle'} />
-      </div>
-      <div className="activity-log-body">
-        {logs.length === 0 && (
-          <div className="activity-log-empty">No activity yet</div>
-        )}
-        {logs.map((entry) => (
-          <div key={entry.id} className={`activity-log-entry log-${entry.level}`}>
-            <span className="log-ts">{entry.ts}</span>
-            <span className="log-msg">{entry.msg}</span>
-          </div>
-        ))}
-        <div ref={bottomRef} />
-      </div>
-    </div>
-  );
-}
 
 export function Inspector() {
   const { nodes, selectedNodeId, updateNodeData } = useStore();
@@ -229,6 +30,10 @@ export function Inspector() {
   );
 
   if (!node) {
+    return null;
+  }
+
+  if (false) {
     return (
       <aside className="inspector empty">
         <div className="inspector-header">
@@ -244,9 +49,9 @@ export function Inspector() {
           <p>Select a node to configure it</p>
         </div>
         {footer}
-        <FeedbackPanel />
-        <LlmPanel />
-        <ActivityLog />
+        <div style={{ padding: '8px 12px', margin: '4px 0', background: 'rgba(99,102,241,0.06)', border: '1px solid #2a2d3e', borderRadius: 6, fontSize: 11, color: '#6366f1' }}>
+          ⬡ LLM config → <strong>Setup tab</strong>
+        </div>
       </aside>
     );
   }
@@ -261,10 +66,6 @@ export function Inspector() {
 
   return (
     <aside className="inspector">
-      <div className="inspector-header">
-        <span className="inspector-icon">⊛</span> K9X Inspector
-      </div>
-
       <div className="inspector-body">
         {/* Component type badge */}
         <div
@@ -309,7 +110,7 @@ export function Inspector() {
                 value={data.llmProvider ?? 'ollama'}
                 onChange={(e) => set('llmProvider', e.target.value)}
               >
-                {LLM_PROVIDERS.map((o) => (
+                {['ollama', 'openai', 'anthropic', 'azure_openai'].map((o) => (
                   <option key={o} value={o}>{o}</option>
                 ))}
               </select>
@@ -446,9 +247,6 @@ export function Inspector() {
         </div>
       </div>
       {footer}
-      <FeedbackPanel />
-      <LlmPanel />
-      <ActivityLog />
     </aside>
   );
 }

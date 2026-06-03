@@ -4,14 +4,16 @@ import type { Node, Edge } from '@xyflow/react';
 import { useStore } from '../store';
 import { Palette } from './Palette';
 import { Canvas } from './Canvas';
-import { Inspector } from './Inspector';
 import { BottomPanel } from './BottomPanel';
 import { GeneratingOverlay } from './GeneratingOverlay';
 import { IntakePanel } from './IntakePanel';
 import { DocsPanel } from './DocsPanel';
+import { AboutStudio } from './AboutStudio';
+import { SetupPanel } from './SetupPanel';
+import { Inspector } from './Inspector';
 import type { NodeData, ProjectMeta } from '../types';
 
-type CenterTab = 'intake' | 'canvas' | 'flow' | 'docs';
+type CenterTab = 'about' | 'setup' | 'intake' | 'canvas' | 'flow' | 'docs';
 
 function buildProjectPayload(
   project: ProjectMeta,
@@ -58,11 +60,13 @@ export function Studio() {
   const {
     project, nodes, edges, clearCanvas, generating,
     history, future, undo, redo, layoutCanvas, setScreen, addGeneratedDoc,
-    lastTemplateSuggestion, triggerReapply,
+    lastTemplateSuggestion, triggerReapply, clearSession, llmConfig, setLlmConfig, llmActive, setLlmActive,
+    selectedNodeId, availableModels, lastSpecFile, addLog, setPendingCanvasSuggestion, setGenerating, genResult,
   } = useStore();
 
   const handleLogout = () => {
     sessionStorage.removeItem('k9x_authed');
+    clearSession();
     setScreen('splash');
   };
 
@@ -80,9 +84,9 @@ export function Studio() {
 
   // ── Resizable panes ──────────────────────────────────────────
   const [leftWidth,  setLeftWidth]  = useState(290);
-  const [rightWidth, setRightWidth] = useState(270);
-  const isDraggingLeft  = useRef(false);
+  const [rightWidth, setRightWidth] = useState(260);
   const isDraggingRight = useRef(false);
+  const isDraggingLeft  = useRef(false);
 
   const startResizeLeft = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -106,7 +110,7 @@ export function Studio() {
     const startX = e.clientX;
     const startW = rightWidth;
     const onMove = (ev: MouseEvent) =>
-      setRightWidth(Math.max(200, Math.min(440, startW - (ev.clientX - startX))));
+      setRightWidth(Math.max(200, Math.min(400, startW - (ev.clientX - startX))));
     const onUp = () => {
       isDraggingRight.current = false;
       document.removeEventListener('mousemove', onMove);
@@ -168,7 +172,7 @@ export function Studio() {
   };
 
   const [showBottom, setShowBottom] = useState(true);
-  const [centerTab, setCenterTab] = useState<CenterTab>('intake');
+  const [centerTab, setCenterTab] = useState<CenterTab>('about');
   const [draggedComponent, setDraggedComponent] = useState<any>(null);
 
   const onDragStart = useCallback((e: React.DragEvent, comp: any) => {
@@ -204,6 +208,30 @@ export function Studio() {
         </div>
 
         <div className="header-right">
+          <div className={`llm-status-dot ${llmActive ? 'llm-dot-active' : llmConfig?.model ? 'llm-dot-on' : 'llm-dot-off'}`}
+            title={llmActive ? 'LLM active' : llmConfig?.model ? 'LLM connected' : 'No LLM'} />
+          {llmConfig?.model && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11,
+              background: 'rgba(16,185,129,0.08)', border: '1px solid #065f46',
+              borderRadius: 5, padding: '3px 6px 3px 10px', color: '#10b981' }}>
+              <span style={{ opacity: 0.7 }}>{llmConfig.provider}</span>
+              <span style={{ color: '#475569' }}>·</span>
+              {availableModels.length > 0 ? (
+                <select
+                  value={llmConfig.model}
+                  onChange={(e) => setLlmConfig({ ...llmConfig, model: e.target.value })}
+                  style={{ background: 'transparent', border: 'none', color: '#10b981',
+                    fontSize: 11, fontWeight: 600, cursor: 'pointer', outline: 'none' }}
+                >
+                  {availableModels.map((m) => <option key={m} value={m} style={{ background: '#1a1d27', color: '#e2e8f0' }}>{m}</option>)}
+                </select>
+              ) : (
+                <span style={{ fontWeight: 600 }}>{llmConfig.model}</span>
+              )}
+              <span>✓</span>
+            </div>
+          )}
+          <div className="header-sep" />
           {/* Undo / Redo */}
           <button
             className="btn-icon"
@@ -247,7 +275,7 @@ export function Studio() {
 
         {/* Left pane */}
         <div className="studio-left" style={{ width: leftWidth, minWidth: leftWidth, maxWidth: leftWidth }}>
-          <Palette onDragStart={onDragStart} onExport={handleExport} exporting={exporting} />
+          <Palette onDragStart={onDragStart} onSwitchToCanvas={() => setCenterTab('canvas')} />
         </div>
 
         {/* Left resize handle */}
@@ -267,6 +295,8 @@ export function Studio() {
             {/* Center tabs */}
             <div className="center-tabs">
               {([
+                { id: 'about',  label: 'About' },
+                { id: 'setup',  label: 'Setup' },
                 { id: 'intake', label: 'Intake' },
                 { id: 'canvas', label: 'Canvas' },
                 { id: 'flow',   label: 'Graph' },
@@ -282,11 +312,34 @@ export function Studio() {
               ))}
             </div>
 
+            {centerTab === 'about' && (
+              <div style={{ flex: 1, overflow: 'auto', padding: '28px 36px' }}>
+                <AboutStudio />
+              </div>
+            )}
+            {centerTab === 'setup' && (
+              <div style={{ flex: 1, overflow: 'auto', padding: '28px 36px' }}>
+                <SetupPanel />
+              </div>
+            )}
             {centerTab === 'canvas' && (
               <>
                 <div className="canvas-area">
+                  {project.project_name && (
+                    <div style={{
+                      position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)',
+                      fontSize: 12, fontWeight: 500, color: 'rgba(239,68,68,0.6)',
+                      letterSpacing: '0.5px', pointerEvents: 'none', zIndex: 5,
+                      userSelect: 'none', whiteSpace: 'nowrap',
+                      background: 'rgba(239,68,68,0.06)',
+                      border: '1px solid rgba(239,68,68,0.15)',
+                      borderRadius: 5, padding: '3px 12px',
+                    }}>
+                      {project.project_name}
+                    </div>
+                  )}
                   <Canvas draggedComponent={draggedComponent} generating={generating} />
-                  <GeneratingOverlay visible={generating} />
+                  <GeneratingOverlay visible={generating} result={genResult} />
                   {nodes.length > 0 && (
                     <button
                       className="canvas-reset-btn"
@@ -294,8 +347,53 @@ export function Studio() {
                       title={lastTemplateSuggestion ? 'Reset to template' : 'Clear canvas'}
                     >↺ Reset</button>
                   )}
+                  {llmConfig?.model && lastSpecFile && nodes.length > 0 && (
+                    <button
+                      onClick={async () => {
+                        setGenerating(true); setLlmActive(true);
+                        addLog(`Regenerating with ${llmConfig.model}…`);
+                        clearCanvas();
+                        const fd = new FormData();
+                        fd.append('file', lastSpecFile);
+                        fd.append('llm_config', JSON.stringify(llmConfig));
+                        fd.append('force_llm', 'true');
+                        try {
+                          const res = await fetch('/api/spec/import', { method: 'POST', body: fd });
+                          const data = await res.json();
+                          if (data.suggestion) { setPendingCanvasSuggestion(data.suggestion); }
+                          addLog(`✓ Reprocessed · ${(data.suggestion?.agents ?? []).length} agents · ${data.source}`);
+                        } catch (err: any) {
+                          addLog(`Reprocess failed: ${err.message}`, 'error');
+                        } finally { setGenerating(false); setLlmActive(false); }
+                      }}
+                      title="Pick a different model from the header and click to regenerate the flow"
+                      style={{
+                        position: 'absolute', bottom: 56, right: 16, zIndex: 10,
+                        padding: '6px 14px', fontSize: 12, fontWeight: 600,
+                        background: 'rgba(0,0,0,0.5)', border: '1px solid #2d6a4f',
+                        color: '#52b788', borderRadius: 6, cursor: 'pointer',
+                        letterSpacing: '0.5px', opacity: 0.9,
+                      }}
+                    >
+                      ⟳ Regenerate
+                    </button>
+                  )}
+                  <button
+                    onClick={handleExport}
+                    disabled={exporting || nodes.length === 0 || !project.project_name.trim()}
+                    title={!project.project_name.trim() ? 'Set a project name first' : 'Generate and download scaffold ZIP'}
+                    style={{
+                      position: 'absolute', bottom: 16, right: 16, zIndex: 10,
+                      padding: '8px 16px', fontSize: 13, fontWeight: 600,
+                      background: 'rgba(0,0,0,0.5)', border: 'none',
+                      color: '#f59e0b', borderRadius: 6, cursor: 'pointer',
+                      letterSpacing: '0.5px', transition: 'opacity 0.15s',
+                      opacity: (nodes.length === 0 || !project.project_name.trim()) ? 0.25 : 0.85,
+                    }}
+                  >
+                    {exporting ? '⟳ Generating…' : '⬇ Generate Scaffold'}
+                  </button>
                 </div>
-                {showBottom && <BottomPanel />}
               </>
             )}
 
@@ -310,14 +408,19 @@ export function Studio() {
           </div>
         </ReactFlowProvider>
 
-        {/* Right resize handle */}
-        <div className="pane-resizer" onMouseDown={startResizeRight} title="Drag to resize" />
+        {/* Right pane — appears only when a node is selected */}
+        {selectedNodeId && (
+          <>
+            <div className="pane-resizer" onMouseDown={startResizeRight} title="Drag to resize" />
+            <div className="studio-right" style={{ width: rightWidth, minWidth: rightWidth, maxWidth: rightWidth }}>
+              <Inspector />
+            </div>
+          </>
+        )}
 
-        {/* Right pane */}
-        <div className="studio-right" style={{ width: rightWidth, minWidth: rightWidth, maxWidth: rightWidth }}>
-          <Inspector />
-        </div>
       </div>
+
+      {showBottom && <BottomPanel />}
 
     </div>
   );

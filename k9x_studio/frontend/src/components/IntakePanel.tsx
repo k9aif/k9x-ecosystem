@@ -2,9 +2,11 @@ import { useState } from 'react';
 import { useStore } from '../store';
 
 export function IntakePanel({ onSwitchTab }: { onSwitchTab?: (tab: string) => void }) {
-  const { project, setProject, nodes, generating, setGenerating, llmConfig, addLog, setLlmActive, addGeneratedDoc, setPendingCanvasSuggestion, specImported, setSpecImported, clearCanvas } = useStore();
+  const { project, setProject, nodes, generating, setGenerating, llmConfig, addLog, setLlmActive, addGeneratedDoc, setPendingCanvasSuggestion, specImported, setSpecImported, clearCanvas, setLastSpecFile, setGenResult } = useStore();
   const [wifBusy, setWifBusy] = useState(false);
   const [specBusy, setSpecBusy] = useState(false);
+  const [specError, setSpecError] = useState('');
+  const [specFileName, setSpecFileName] = useState('');
 
   const set = (key: string, value: string) =>
     setProject({ ...project, [key]: value });
@@ -86,7 +88,7 @@ ${s('Business Vision', (project as any).vision ?? '')}${s('Current State', (proj
 
         {/* Seed options — top */}
         <div className="intake-seed-row">
-          <label className={`intake-bpmn-btn${specBusy ? ' intake-bpmn-btn--busy' : ''}`}>
+          <label className={`intake-bpmn-btn${specBusy ? ' intake-bpmn-btn--busy' : ''}`} title="Upload a .md document — extracts project info and auto-generates canvas (.docx and .pdf support coming soon)">
             <span>{specBusy ? '⟳ Processing…' : '⬆ Upload Spec Doc'}</span>
             <input
               type="file"
@@ -97,7 +99,8 @@ ${s('Business Vision', (project as any).vision ?? '')}${s('Current State', (proj
                 const file = e.target.files?.[0];
                 e.target.value = '';
                 if (!file) return;
-                setSpecBusy(true);
+                setSpecBusy(true); setSpecError(''); setGenerating(true);
+                onSwitchTab?.('canvas');
                 addLog(`Importing spec doc: ${file.name}…`);
                 const fd = new FormData();
                 fd.append('file', file);
@@ -120,8 +123,22 @@ ${s('Business Vision', (project as any).vision ?? '')}${s('Current State', (proj
                     onSwitchTab?.('canvas');
                   }
                   setSpecImported(true);
-                  addLog(`✓ Spec imported · source: ${data.source ?? 'spec'} · ${(data.suggestion?.agents ?? []).length} agents`);
+                  setSpecFileName(file.name);
+                  setLastSpecFile(file);
+                  const sc = data.scoring;
+                  if (sc) {
+                    const w = sc[sc.winner];
+                    const l = sc.winner === 'llm' ? sc.rule_based : sc.llm;
+                    const wLabel = sc.winner === 'llm' ? 'LLM' : 'Rule-based';
+                    const lLabel = sc.winner === 'llm' ? 'Rule-based' : 'LLM';
+                    setGenResult({ winner: wLabel, winnerScore: w?.score, winnerAgents: w?.agent_count, winnerSquads: w?.squad_count });
+                    addLog(`✓ ${wLabel} selected (score: ${w?.score}) — ${w?.agent_count} agents, ${w?.squad_count} squads`);
+                    addLog(`  ${lLabel} score: ${l?.score} (${l?.agent_count} agents) — not selected`);
+                  } else {
+                    addLog(`✓ Spec imported · ${(data.suggestion?.agents ?? []).length} agents`);
+                  }
                 } catch (err: any) {
+                  setSpecError(`Failed — ${err.message ?? 'unknown'}`);
                   addLog(`Spec import failed: ${err.message ?? 'unknown'}`, 'error');
                 } finally {
                   setLlmActive(false);
@@ -131,7 +148,7 @@ ${s('Business Vision', (project as any).vision ?? '')}${s('Current State', (proj
               }}
             />
           </label>
-          <label className="intake-bpmn-btn">
+          <label className="intake-bpmn-btn" title="IBM Blueworks Live · Camunda · Bizagi (.bpmn, .xml, .zip)">
             <span>⬆ Upload BPMN</span>
             <input
               type="file"
@@ -169,7 +186,28 @@ ${s('Business Vision', (project as any).vision ?? '')}${s('Current State', (proj
               }}
             />
           </label>
-          <div className="intake-seed-hint">IBM Blueworks Live · Camunda · Bizagi (.bpmn, .xml, .zip)</div>
+          {specBusy && (
+            <div style={{ fontSize: 11, color: '#f59e0b', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>⟳</span>
+              Processing document — LLM analysing, please wait…
+            </div>
+          )}
+          {specFileName && !specError && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
+              <div style={{
+                fontSize: 11, color: '#34d399',
+                background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.25)',
+                borderRadius: 4, padding: '3px 8px',
+              }}>
+                ✓ {specFileName}
+              </div>
+            </div>
+          )}
+          {specError && (
+            <div style={{ fontSize: 11, color: '#f87171', marginTop: 4 }}>
+              ✕ {specError} — check Activity Log
+            </div>
+          )}
         </div>
 
         <div className="intake-field">
@@ -181,7 +219,7 @@ ${s('Business Vision', (project as any).vision ?? '')}${s('Current State', (proj
 
         <div className="intake-row-2">
           <div className="intake-field">
-            <label className="intake-label">Project Name</label>
+            <label className="intake-label">Project Name <span style={{ color: '#f87171', marginLeft: 2 }}>*</span></label>
             <input
               className="intake-input"
               placeholder="e.g. Insurance Transformation 2026"
@@ -222,7 +260,7 @@ ${s('Business Vision', (project as any).vision ?? '')}${s('Current State', (proj
         </div>
 
         <div className="intake-field">
-          <label className="intake-label">Description</label>
+          <label className="intake-label">Description <span style={{ color: '#94a3b8', fontSize: 9, marginLeft: 2 }}>* at least one context field required</span></label>
           <input
             className="intake-input"
             placeholder="One-line description of the application"
@@ -292,7 +330,7 @@ ${s('Business Vision', (project as any).vision ?? '')}${s('Current State', (proj
             <button
               className="intake-btn-flow"
               onClick={async () => {
-                const hasContext = project.description.trim() || (project as any).vision?.trim();
+                const hasContext = project.description.trim() || (project as any).vision?.trim() || (project as any).current_state?.trim() || (project as any).pain_points?.trim() || (project as any).target_goals?.trim();
                 if (generating || !hasContext) return;
                 setGenerating(true);
                 const usingLlm = Boolean(llmConfig?.endpoint?.trim());
@@ -318,7 +356,7 @@ ${s('Business Vision', (project as any).vision ?? '')}${s('Current State', (proj
                   setLlmActive(false);
                 }
               }}
-              disabled={generating || !project.project_name.trim() || (!project.description.trim() && !(project as any).vision?.trim())}
+              disabled={generating || !project.project_name.trim() || (!project.description.trim() && !(project as any).vision?.trim() && !(project as any).current_state?.trim() && !(project as any).pain_points?.trim() && !(project as any).target_goals?.trim())}
               title="Generate architecture flow on canvas"
             >
               {generating ? '⟳ Generating…' : '✦ Generate Flow'}

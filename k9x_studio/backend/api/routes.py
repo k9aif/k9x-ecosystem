@@ -211,6 +211,19 @@ def _call_llm(endpoint: str, provider: str, model: str, api_key: str, prompt: st
         )
         resp.raise_for_status()
         return resp.json().get("response", "")
+    elif provider == "watsonx":
+        import requests as http
+        headers: dict = {"Content-Type": "application/json", "Accept": "application/json"}
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+        resp = http.post(
+            f"{endpoint}/chat/completions",
+            headers=headers,
+            json={"model": model, "messages": [{"role": "user", "content": prompt}], "max_tokens": 2048},
+            timeout=120,
+        )
+        resp.raise_for_status()
+        return resp.json()["choices"][0]["message"]["content"]
     elif provider in ("openai", "custom"):
         headers: dict = {"Content-Type": "application/json"}
         if api_key:
@@ -294,7 +307,12 @@ async def bpmn_import(file: UploadFile = File(...), llm_config: Optional[str] = 
         except zipfile.BadZipFile:
             raise HTTPException(status_code=422, detail="Not a valid ZIP file")
 
+    if len(raw) > 2 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File too large (max 2MB)")
     content = raw.decode("utf-8", errors="replace")
+    governance_err = _governance_check(content)
+    if governance_err:
+        raise HTTPException(status_code=422, detail=governance_err)
     try:
         base_suggestion = parse_bpmn(content)
     except ValueError as exc:
@@ -589,13 +607,52 @@ def verify_llm(req: LlmSessionConfig):
             raise HTTPException(status_code=400, detail=f"Unknown provider: {provider}")
 
     except http.exceptions.ConnectionError:
-        raise HTTPException(status_code=502, detail=f"Cannot reach {endpoint}")
+        return {"ok": False, "detail": f"Cannot reach {endpoint}"}
     except http.exceptions.Timeout:
-        raise HTTPException(status_code=504, detail="Endpoint timed out")
+        return {"ok": False, "detail": "Endpoint timed out"}
     except http.exceptions.HTTPError as e:
-        raise HTTPException(status_code=502, detail=f"Endpoint returned {e.response.status_code}")
+        return {"ok": False, "detail": f"Endpoint returned {e.response.status_code}"}
     except Exception as e:
-        raise HTTPException(status_code=502, detail=str(e))
+        return {"ok": False, "detail": str(e)}
+
+
+@router.post("/llm/models")
+def list_models(req: LlmSessionConfig):
+    import requests as http
+    endpoint = req.endpoint.strip().rstrip("/")
+    if not endpoint:
+        if req.provider == "anthropic": endpoint = "https://api.anthropic.com"
+        elif req.provider == "ollama":  endpoint = "http://localhost:11434"
+    if not endpoint.startswith(("http://", "https://")):
+        endpoint = "http://" + endpoint
+
+    if req.provider == "anthropic":
+        return {"models": ["claude-sonnet-4-6", "claude-opus-4-8", "claude-haiku-4-5-20251001"]}
+
+    if req.provider == "watsonx":
+        return {"models": [
+            "ibm/granite-3-3-8b-instruct",
+            "ibm/granite-3-3-2b-instruct",
+            "ibm/granite-3-2-8b-instruct",
+            "meta-llama/llama-3-3-70b-instruct",
+            "meta-llama/llama-3-1-8b-instruct",
+            "mistralai/mistral-large",
+        ]}
+
+    try:
+        if req.provider == "ollama":
+            r = http.get(f"{endpoint}/api/tags", timeout=8)
+            r.raise_for_status()
+            return {"models": [m["name"] for m in r.json().get("models", [])]}
+        elif req.provider in ("openai", "custom"):
+            headers = {}
+            if req.api_key: headers["Authorization"] = f"Bearer {req.api_key}"
+            r = http.get(f"{endpoint}/models", headers=headers, timeout=8)
+            r.raise_for_status()
+            return {"models": sorted(m["id"] for m in r.json().get("data", []))}
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Cannot fetch models: {e}")
+    return {"models": []}
 
 
 @router.get("/docs")
@@ -637,6 +694,25 @@ def download_file(path: str = ""):
     if not file_path.exists() or not file_path.is_file():
         raise HTTPException(status_code=404, detail="File not found")
     return FileResponse(path=str(file_path), filename=file_path.name)
+
+
+@router.delete("/delete-file")
+def delete_file(path: str = ""):
+    import os
+    if not path:
+        raise HTTPException(status_code=400, detail="path required")
+    projects_root = os.environ.get("K9X_PROJECTS_ROOT", "")
+    file_path = Path(path).expanduser().resolve()
+    if projects_root:
+        root_dir = Path(projects_root).resolve()
+        try:
+            file_path.relative_to(root_dir)
+        except ValueError:
+            raise HTTPException(status_code=403, detail="Access denied")
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+    file_path.unlink()
+    return {"status": "ok"}
 
 
 @router.get("/health")
@@ -797,14 +873,94 @@ def _build_suggestion_from_spec(project_name: str, agents_raw: list) -> dict:
     return {'orchestrators': orchestrators, 'squads': squads, 'agents': all_agents}
 
 
+# ── Governance screening ──────────────────────────────────────────────────────
+
+_PROFANITY = re.compile(
+    r'\b(fuck|shit|ass|bitch|bastard|cunt|dick|pussy|cock|whore|nigger|faggot|retard)\b',
+    re.IGNORECASE
+)
+_INJECTION = re.compile(
+    r'(ignore\s+(previous|all)\s+instructions?|<\s*script|prompt\s*injection|jailbreak)',
+    re.IGNORECASE
+)
+
+_GOVERNANCE_MAX_CHARS = int(_os.environ.get("GOVERNANCE_MAX_CHARS", "50000"))
+_GOVERNANCE_ENDPOINT  = _os.environ.get("GOVERNANCE_LLM_ENDPOINT", "").strip().rstrip("/")
+_GOVERNANCE_MODEL     = _os.environ.get("GOVERNANCE_LLM_MODEL", "granite3-guardian:latest").strip()
+
+
+def _governance_check(content: str) -> Optional[str]:
+    """
+    Returns an error string if content fails governance, None if it passes.
+    Layer 1: rule-based (always). Layer 2: Granite Guardian (if configured + doc small enough).
+    Only scan first 2000 chars for injection — real attacks appear at the start, not buried in content.
+    """
+    # Layer 1 — rule-based
+    if _PROFANITY.search(content):
+        return "Document contains inappropriate language and cannot be processed."
+    if _INJECTION.search(content[:2000]):
+        return "Document contains prompt injection patterns and cannot be processed."
+
+    # Layer 2 — Granite Guardian (only if endpoint configured and doc is small enough)
+    if not _GOVERNANCE_ENDPOINT or len(content) > _GOVERNANCE_MAX_CHARS:
+        return None
+
+    endpoint = _GOVERNANCE_ENDPOINT
+    if not endpoint.startswith(("http://", "https://")):
+        endpoint = "http://" + endpoint
+
+    try:
+        import requests as _http
+        prompt = (
+            "You are a content safety classifier. "
+            "Is the following document appropriate professional business content? "
+            "Reply with SAFE or UNSAFE only, nothing else.\n\n"
+            f"{content[:3000]}"
+        )
+        resp = _http.post(
+            f"{endpoint}/api/generate",
+            json={"model": _GOVERNANCE_MODEL, "prompt": prompt, "stream": False},
+            timeout=15,
+        )
+        resp.raise_for_status()
+        verdict = resp.json().get("response", "").strip().upper()
+        if "UNSAFE" in verdict:
+            return "Document failed content safety check and cannot be processed."
+    except Exception:
+        pass  # governance LLM unavailable — fail open, Layer 1 already passed
+
+    return None
+
+
+def _score_suggestion(suggestion: dict) -> dict:
+    """Score a suggestion by agent count, squad count, and agent type diversity."""
+    agents = suggestion.get('agents', [])
+    squads = suggestion.get('squads', [])
+    types  = set(a.get('type', 'BaseAgent') for a in agents)
+    score  = len(agents) * 2 + len(squads) * 3 + len(types)
+    return {
+        'score':       score,
+        'agent_count': len(agents),
+        'squad_count': len(squads),
+        'type_count':  len(types),
+    }
+
+
 @router.post("/spec/import")
-async def spec_import(file: UploadFile = File(...), llm_config: Optional[str] = Form(None)):
+async def spec_import(file: UploadFile = File(...), llm_config: Optional[str] = Form(None), force_llm: Optional[str] = Form(None)):
     """Parse a project spec .md and return intake fields + canvas suggestion."""
     fname = (file.filename or "").lower()
     if not fname.endswith((".md", ".txt")):
         raise HTTPException(status_code=400, detail="Upload a .md or .txt file")
 
     content = (await file.read()).decode("utf-8", errors="replace")
+
+    if len(content) > 2 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Document too large (max 2MB)")
+    governance_err = _governance_check(content)
+    if governance_err:
+        raise HTTPException(status_code=422, detail=governance_err)
+
     intake, agents_raw = _parse_spec_doc(content)
 
     if llm_config and agents_raw:
@@ -853,7 +1009,33 @@ Every agent name in squads[].agents must have a matching entry in agents[]. Retu
                 if match:
                     llm_suggestion = _json.loads(match.group())
                     if "agents" in llm_suggestion and "squads" in llm_suggestion:
-                        return {"suggestion": llm_suggestion, "intake": intake, "source": "spec+llm"}
+                        # Score both and pick the best
+                        rule_suggestion = _build_suggestion_from_spec(intake.get('project_name', 'Project'), agents_raw) if agents_raw else None
+                        llm_scores  = _score_suggestion(llm_suggestion)
+                        rule_scores = _score_suggestion(rule_suggestion) if rule_suggestion else {'score': 0, 'agent_count': 0, 'squad_count': 0, 'type_count': 0}
+
+                        if llm_scores['score'] >= rule_scores['score']:
+                            return {
+                                "suggestion": llm_suggestion,
+                                "intake": intake,
+                                "source": "spec+llm",
+                                "scoring": {
+                                    "winner": "llm",
+                                    "llm": llm_scores,
+                                    "rule_based": rule_scores,
+                                }
+                            }
+                        else:
+                            return {
+                                "suggestion": rule_suggestion,
+                                "intake": intake,
+                                "source": "spec",
+                                "scoring": {
+                                    "winner": "rule_based",
+                                    "llm": llm_scores,
+                                    "rule_based": rule_scores,
+                                }
+                            }
         except Exception:
             pass
 

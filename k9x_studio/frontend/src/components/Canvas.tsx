@@ -133,20 +133,40 @@ export function Canvas({ generating }: CanvasProps) {
       }
 
       if (comp.type === 'intent_squad') {
-        // Auto-create IntentAgent inside
-        const agentId = `agent-${nodeCounter++}`;
+        // Auto-create IntentSquad → K9IntentAgent
+        const squadId = `squad-${nodeCounter++}`;
         addNode({
-          id: agentId, type: 'k9node',
-          position: { x: position.x, y: position.y + 180 },
+          id: squadId, type: 'k9node',
+          position: { x: position.x, y: position.y + 160 },
           data: {
-            label: 'IntentAgent', componentType: 'agent' as any,
-            color: '#10b981', abbClass: 'BaseAgent',
-            agentType: 'BaseAgent', model: 'general', pattern: 'reasoning',
-            description: 'Classifies incoming event intent for non-deterministic routing',
+            label: 'IntentSquad', componentType: 'squad' as any,
+            color: '#0ea5e9', abbClass: 'IntentSquad',
+            description: 'Squad used by IntentOrchestrator to classify intent',
+            model: 'general', pattern: 'reasoning',
             temperature: '0.3', maxTokens: '2048', llmProvider: 'ollama',
           } as NodeData,
         } as any);
-        onConnect({ source: id, target: agentId, sourceHandle: 's-bottom', targetHandle: 't-top' });
+        onConnect({ source: id, target: squadId, sourceHandle: 's-bottom', targetHandle: 't-top' });
+
+        const agentId = `agent-${nodeCounter++}`;
+        addNode({
+          id: agentId, type: 'k9node',
+          position: { x: position.x, y: position.y + 340 },
+          data: {
+            label: 'K9IntentAgent', componentType: 'agent' as any,
+            color: '#10b981', abbClass: 'K9IntentAgent',
+            agentType: 'BaseAgent', model: 'general', pattern: 'reasoning',
+            description: 'LLM-driven intent classification — checks intent_map first, falls back to LLM',
+            temperature: '0.3', maxTokens: '2048', llmProvider: 'ollama',
+          } as NodeData,
+        } as any);
+        onConnect({ source: squadId, target: agentId, sourceHandle: 's-bottom', targetHandle: 't-top' });
+
+        // Auto-wire from Router → Intent Orchestrator (via intent.in)
+        const router = nodes.find((n) => (n.data as NodeData).componentType === 'router');
+        if (router) {
+          onConnect({ source: router.id, target: id, sourceHandle: 's-right', targetHandle: 't-left' });
+        }
       }
 
       // Auto-connect to nearest valid parent node

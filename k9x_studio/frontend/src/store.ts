@@ -40,11 +40,15 @@ interface StudioStore {
   edges: Edge[];
   selectedNodeId: string | null;
   generating: boolean;
+  genResult: { winner: string; winnerScore: number; winnerAgents: number; winnerSquads: number } | null;
+  setGenResult: (r: any) => void;
   theme: 'dark' | 'light';
   history: Snapshot[];
   future: Snapshot[];
   llmConfig: LlmSessionConfig | null;
   setLlmConfig: (cfg: LlmSessionConfig | null) => void;
+  availableModels: string[];
+  setAvailableModels: (m: string[]) => void;
   llmActive: boolean;
   setLlmActive: (v: boolean) => void;
   logs: LogEntry[];
@@ -57,8 +61,12 @@ interface StudioStore {
   setPendingCanvasSuggestion: (s: any) => void;
   specImported: boolean;
   setSpecImported: (v: boolean) => void;
+  lastSpecFile: File | null;
+  setLastSpecFile: (f: File | null) => void;
   generatedDocs: { name: string; content: string; ts: string }[];
   addGeneratedDoc: (name: string, content: string) => void;
+  removeGeneratedDoc: (name: string) => void;
+  clearSession: () => void;
 
   setScreen: (s: AppScreen) => void;
   setProject: (p: ProjectMeta) => void;
@@ -87,11 +95,15 @@ export const useStore = create<StudioStore>((set) => ({
   edges: [],
   selectedNodeId: null,
   generating: false,
+  genResult: null,
+  setGenResult: (genResult) => set({ genResult }),
   theme: 'dark',
   history: [],
   future: [],
   llmConfig: null,
   setLlmConfig: (cfg) => set({ llmConfig: cfg }),
+  availableModels: [],
+  setAvailableModels: (availableModels) => set({ availableModels }),
   llmActive: false,
   setLlmActive: (v) => set({ llmActive: v }),
   logs: [],
@@ -111,7 +123,11 @@ export const useStore = create<StudioStore>((set) => ({
   setPendingCanvasSuggestion: (s: any) => set({ pendingCanvasSuggestion: s }),
   specImported: false,
   setSpecImported: (v: boolean) => set({ specImported: v }),
+  lastSpecFile: null as File | null,
+  setLastSpecFile: (f: File | null) => set({ lastSpecFile: f }),
   generatedDocs: [],
+  removeGeneratedDoc: (name) =>
+    set((s) => ({ generatedDocs: s.generatedDocs.filter((d) => d.name !== name) })),
   addGeneratedDoc: (name, content) =>
     set((s) => ({
       generatedDocs: [
@@ -119,6 +135,15 @@ export const useStore = create<StudioStore>((set) => ({
         ...s.generatedDocs.filter((d) => d.name !== name),
       ],
     })),
+
+  clearSession: () => set({
+    nodes: [], edges: [], selectedNodeId: null,
+    history: [], future: [],
+    generatedDocs: [], logs: [],
+    specImported: false, pendingCanvasSuggestion: null,
+    lastTemplateSuggestion: null,
+    project: { project_name: '', app_name: '', author: '', domain: '', description: '', project_folder: '', framework_path: '', platforms: [] },
+  }),
 
   setScreen: (screen) => set({ screen }),
   setProject: (project) => set({ project }),
@@ -261,17 +286,16 @@ export const useStore = create<StudioStore>((set) => ({
             return t ? AGENT_TYPES.has((t.data as NodeData).componentType) : false;
           })
       );
-      return {
-        nodes: s.nodes.map((n) => {
-          if (n.id === squadId) return { ...n, data: { ...n.data, collapsed: nowCollapsed } };
-          if (agentIds.has(n.id)) return { ...n, hidden: nowCollapsed };
-          return n;
-        }),
-        edges: s.edges.map((e) => {
-          if (e.source === squadId && agentIds.has(e.target)) return { ...e, hidden: nowCollapsed };
-          return e;
-        }),
-      };
+      const newNodes = s.nodes.map((n) => {
+        if (n.id === squadId) return { ...n, data: { ...n.data, collapsed: nowCollapsed } };
+        if (agentIds.has(n.id)) return { ...n, hidden: nowCollapsed };
+        return n;
+      });
+      const newEdges = s.edges.map((e) => {
+        if (e.source === squadId && agentIds.has(e.target)) return { ...e, hidden: nowCollapsed };
+        return e;
+      });
+      return { nodes: newNodes, edges: newEdges };
     }),
 
   collapseAllSquads: () =>

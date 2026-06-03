@@ -27,8 +27,7 @@ const uid2 = () => `regen-${_pid++}`;
 
 interface PaletteProps {
   onDragStart: (e: React.DragEvent, component: PaletteComponent) => void;
-  onExport: () => void;
-  exporting: boolean;
+  onSwitchToCanvas?: () => void;
 }
 
 type PaletteTab = 'components' | 'project';
@@ -38,15 +37,17 @@ function slugify(s: string) {
   return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
 }
 
-export function Palette({ onDragStart, onExport, exporting }: PaletteProps) {
+export function Palette({ onDragStart, onSwitchToCanvas }: PaletteProps) {
   const [tab, setTab] = useState<PaletteTab>('project');
   const [components, setComponents] = useState<PaletteComponent[]>([]);
   const [projectsRoot, setProjectsRoot] = useState('');
   const [lastTemplate, setLastTemplate] = useState<ProjectTemplate | null>(null);
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
+  const toggleSection = (id: string) => setExpandedSections((s) => ({ ...s, [id]: !s[id] }));
   const isFirstRender = useRef(true);
   const { project, setProject, clearCanvas, addNode, onConnect,
           nodes, selectedNodeId, setGenerating, layoutCanvas, collapseAllSquads,
-          llmConfig, addLog, setLastTemplateSuggestion,
+          addLog, setLastTemplateSuggestion,
           reapplyTemplate, pendingCanvasSuggestion, setPendingCanvasSuggestion } = useStore();
 
 
@@ -173,7 +174,7 @@ export function Palette({ onDragStart, onExport, exporting }: PaletteProps) {
     <aside className="palette">
 
       {/* ── Tab bar ────────────────────────────────── */}
-      <div className="palette-tabs">
+      <div className="palette-tabs" style={{ display: 'flex', alignItems: 'center' }}>
         <button
           className={`palette-tab ${tab === 'project' ? 'active' : ''}`}
           onClick={() => setTab('project')}
@@ -211,6 +212,7 @@ export function Palette({ onDragStart, onExport, exporting }: PaletteProps) {
               );
               return components.map((c) => {
               const isSingletonUsed = !!(c as any).singleton && singletonUsed.has(c.type as string);
+              if (isSingletonUsed) return null;
               const isValidNext = !isSingletonUsed && (validNextTypes === null || validNextTypes.includes(c.type as ComponentType));
               return (
                 <div
@@ -268,7 +270,7 @@ export function Palette({ onDragStart, onExport, exporting }: PaletteProps) {
       {tab === 'project' && (
         <>
           {/* Template picker */}
-          <div className="palette-templates">
+          <div className="palette-templates" style={{ paddingTop: 12 }}>
             <div className="palette-project-label">Start from template</div>
             <select
               className="palette-template-select"
@@ -293,13 +295,14 @@ export function Palette({ onDragStart, onExport, exporting }: PaletteProps) {
                 try {
                   if (t.suggestion) {
                     buildCanvas(t.suggestion);
+                    onSwitchToCanvas?.();
                   } else {
                     const res = await fetch('/api/suggest', {
                       method: 'POST', headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify(updated),
                     });
                     const data = await res.json();
-                    if (data.suggestion) buildCanvas(data.suggestion);
+                    if (data.suggestion) { buildCanvas(data.suggestion); onSwitchToCanvas?.(); }
                   }
                 } catch { /* keep canvas */ }
                 finally { setGenerating(false); }
@@ -315,80 +318,124 @@ export function Palette({ onDragStart, onExport, exporting }: PaletteProps) {
 
           <div className="palette-platforms">
             <div className="palette-project-label">Platforms &amp; Frameworks</div>
-            <div className="platform-group-label" style={{ color: '#4589ff', marginTop: 8 }}>IBM watsonx</div>
-            <div className="platform-pills">
-              {([
-                { id: 'watsonx-assistant',   label: 'Assistant',   color: '#4589ff' },
-                { id: 'watsonx-orchestrate', label: 'Orchestrate', color: '#4589ff' },
-                { id: 'watsonx-governance',  label: 'Governance',  color: '#4589ff' },
-                { id: 'watsonx-data',        label: 'data',        color: '#4589ff' },
-              ] as const).map((p) => {
-                const active = project.platforms.includes(p.id);
-                return (
-                  <button
-                    key={p.id}
-                    className={`platform-pill ${active ? 'platform-pill-active' : ''}`}
-                    style={active ? { borderColor: p.color, color: p.color, background: `${p.color}18` } : {}}
-                    onClick={() => setProject({
-                      ...project,
-                      platforms: active
-                        ? project.platforms.filter((x) => x !== p.id)
-                        : [...project.platforms, p.id],
-                    })}
-                    title={`IBM watsonx ${p.label}`}
-                  >
-                    {active ? '✓ ' : ''}{p.label}
-                  </button>
-                );
-              })}
+            <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4, marginTop: 8 }}>
+              Pick current products in use — solution aligns with your stack
             </div>
-            <div className="platform-group-label" style={{ marginTop: 8, color: '#4a9660' }}>Agent Frameworks</div>
-            <div className="platform-pills">
-              {([
-                { id: 'crewai',    label: 'CrewAI',    color: '#ff6b35' },
-                { id: 'langchain', label: 'LangChain', color: '#1cc88a' },
-              ] as const).map((p) => {
-                const active = project.platforms.includes(p.id);
-                return (
-                  <button
-                    key={p.id}
-                    className={`platform-pill ${active ? 'platform-pill-active' : ''}`}
-                    style={active ? { borderColor: p.color, color: p.color, background: `${p.color}18` } : {}}
-                    onClick={() => setProject({
-                      ...project,
-                      platforms: active
-                        ? project.platforms.filter((x) => x !== p.id)
-                        : [...project.platforms, p.id],
-                    })}
-                    title={p.label}
-                  >
-                    {active ? '✓ ' : ''}{p.label}
-                  </button>
-                );
-              })}
-            </div>
+            {/* IBM watsonx */}
+            <button onClick={() => toggleSection('watsonx')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: '6px 0', marginTop: 8 }}>
+              <span className="platform-group-label" style={{ color: '#4589ff', margin: 0 }}>IBM watsonx</span>
+              <span style={{ color: '#475569', fontSize: 10 }}>{expandedSections['watsonx'] ? '▲' : '▼'}</span>
+            </button>
+            {expandedSections['watsonx'] && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4, paddingLeft: 4 }}>
+                {([
+                  { id: 'watsonx-assistant',   label: 'Assistant'   },
+                  { id: 'watsonx-orchestrate', label: 'Orchestrate' },
+                  { id: 'watsonx-governance',  label: 'Governance'  },
+                  { id: 'watsonx-data',        label: 'Data'        },
+                ] as const).map((p) => {
+                  const active = project.platforms.includes(p.id);
+                  return (
+                    <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12, color: active ? '#8892a4' : '#64748b' }}>
+                      <input type="checkbox" checked={active} onChange={() => setProject({ ...project, platforms: active ? project.platforms.filter((x) => x !== p.id) : [...project.platforms, p.id] })} style={{ accentColor: '#4589ff', cursor: 'pointer' }} />
+                      {p.label}
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Agent Frameworks */}
+            <button onClick={() => toggleSection('frameworks')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: '6px 0', marginTop: 8 }}>
+              <span className="platform-group-label" style={{ color: '#4a9660', margin: 0 }}>Agent Frameworks</span>
+              <span style={{ color: '#475569', fontSize: 10 }}>{expandedSections['frameworks'] ? '▲' : '▼'}</span>
+            </button>
+            {expandedSections['frameworks'] && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4, paddingLeft: 4 }}>
+                {([
+                  { id: 'crewai',    label: 'CrewAI'    },
+                  { id: 'langchain', label: 'LangChain' },
+                ] as const).map((p) => {
+                  const active = project.platforms.includes(p.id);
+                  return (
+                    <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12, color: active ? '#8892a4' : '#64748b' }}>
+                      <input type="checkbox" checked={active} onChange={() => setProject({ ...project, platforms: active ? project.platforms.filter((x) => x !== p.id) : [...project.platforms, p.id] })} style={{ accentColor: '#1cc88a', cursor: 'pointer' }} />
+                      {p.label}
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          {/* Messaging */}
+            <button onClick={() => toggleSection('messaging')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: '6px 0', marginTop: 8 }}>
+              <span className="platform-group-label" style={{ color: '#8b5cf6', margin: 0 }}>Messaging / Event Bus</span>
+              <span style={{ color: '#475569', fontSize: 10 }}>{expandedSections['messaging'] ? '▲' : '▼'}</span>
+            </button>
+            {expandedSections['messaging'] && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4, paddingLeft: 4 }}>
+                {(['Apache Kafka', 'IBM MQ', 'IBM Event Streams', 'AWS SQS', 'Azure Service Bus', 'Redpanda', 'None'] as const).map((item) => {
+                  const active = ((project as any).messaging_list ?? []).includes(item);
+                  return (
+                    <label key={item} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12, color: active ? '#8892a4' : '#64748b' }}>
+                      <input type="checkbox" checked={active} onChange={() => {
+                        const list: string[] = (project as any).messaging_list ?? [];
+                        setProject({ ...project, ...{ messaging_list: active ? list.filter((x) => x !== item) : [...list, item] } } as any);
+                      }} style={{ accentColor: '#8b5cf6', cursor: 'pointer' }} />
+                      {item}
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+
+          {/* Database */}
+            <button onClick={() => toggleSection('database')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: '6px 0', marginTop: 8 }}>
+              <span className="platform-group-label" style={{ color: '#f59e0b', margin: 0 }}>Database</span>
+              <span style={{ color: '#475569', fontSize: 10 }}>{expandedSections['database'] ? '▲' : '▼'}</span>
+            </button>
+            {expandedSections['database'] && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4, paddingLeft: 4 }}>
+                {(['PostgreSQL', 'SQLite', 'MongoDB', 'IBM Db2', 'Oracle', 'MS SQL Server', 'None'] as const).map((item) => {
+                  const active = ((project as any).database_list ?? []).includes(item);
+                  return (
+                    <label key={item} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12, color: active ? '#8892a4' : '#64748b' }}>
+                      <input type="checkbox" checked={active} onChange={() => {
+                        const list: string[] = (project as any).database_list ?? [];
+                        setProject({ ...project, ...{ database_list: active ? list.filter((x) => x !== item) : [...list, item] } } as any);
+                      }} style={{ accentColor: '#f59e0b', cursor: 'pointer' }} />
+                      {item}
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+
+          {/* Deployment Target */}
+            <button onClick={() => toggleSection('deployment')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: '6px 0', marginTop: 8 }}>
+              <span className="platform-group-label" style={{ color: '#10b981', margin: 0 }}>Deployment Target</span>
+              <span style={{ color: '#475569', fontSize: 10 }}>{expandedSections['deployment'] ? '▲' : '▼'}</span>
+            </button>
+            {expandedSections['deployment'] && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4, paddingLeft: 4 }}>
+                {(['On-Premises', 'IBM Cloud', 'AWS', 'Microsoft Azure', 'Google Cloud', 'Hybrid', 'Multi-Cloud'] as const).map((item) => {
+                  const active = ((project as any).deployment_list ?? []).includes(item);
+                  return (
+                    <label key={item} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12, color: active ? '#8892a4' : '#64748b' }}>
+                      <input type="checkbox" checked={active} onChange={() => {
+                        const list: string[] = (project as any).deployment_list ?? [];
+                        setProject({ ...project, ...{ deployment_list: active ? list.filter((x) => x !== item) : [...list, item] } } as any);
+                      }} style={{ accentColor: '#10b981', cursor: 'pointer' }} />
+                      {item}
+                    </label>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
-          <div className="palette-no-llm-note" style={{ marginTop: 8 }}>
-            {llmConfig?.endpoint
-              ? `⊙ LLM connected · suggestions use ${llmConfig.provider}`
-              : '⊙ Demo mode · configure LLM in the right panel for AI-powered suggestions'}
-          </div>
         </>
       )}
 
-      {/* ── CTA buttons — always pinned at bottom ──────── */}
-      <div className="palette-generate-footer">
-        <button
-          className="palette-scaffold-btn"
-          onClick={onExport}
-          disabled={exporting || nodes.length === 0 || !project.project_name.trim()}
-          title={!project.project_name.trim() ? 'Set a project name first' : 'Generate and download scaffold ZIP'}
-        >
-          {exporting ? '⟳  Generating…' : '⬇  Generate Scaffold'}
-        </button>
-
-      </div>
     </aside>
   );
 }

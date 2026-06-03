@@ -1,9 +1,9 @@
-import { useMemo, useState, useRef, useCallback } from 'react';
+import { useMemo, useState, useRef, useCallback, useEffect } from 'react';
 import type { Node, Edge } from '@xyflow/react';
 import { useStore } from '../store';
 import type { NodeData, ProjectMeta } from '../types';
 
-type Tab = 'config' | 'flows' | 'governance' | 'orchestrators' | 'squads';
+type Tab = 'log' | 'config' | 'flows' | 'governance' | 'orchestrators' | 'squads';
 
 function toSnake(s: string): string {
   return s.replace(/([a-z])([A-Z])/g, '$1_$2').replace(/[\s-]+/g, '_').toLowerCase();
@@ -235,14 +235,21 @@ const TAB_LABELS: { id: Tab; label: string }[] = [
 ];
 
 const MIN_HEIGHT = 160;
-const MAX_HEIGHT = 520;
-const DEFAULT_HEIGHT = 220;
+const MAX_HEIGHT = 320;
+const DEFAULT_HEIGHT = 200;
+
+const LEVEL_COLOR: Record<string, string> = { info: '#e2e8f0', warn: '#fbbf24', error: '#f87171' };
 
 export function BottomPanel() {
   const [activeTab, setActiveTab] = useState<Tab>('config');
   const [height, setHeight] = useState(DEFAULT_HEIGHT);
   const isDragging = useRef(false);
-  const { project, nodes, edges } = useStore();
+  const logBottomRef = useRef<HTMLDivElement>(null);
+  const { project, nodes, edges, logs } = useStore();
+
+  useEffect(() => {
+    logBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [logs]);
 
   const n = nodes as Node<NodeData>[];
 
@@ -286,9 +293,44 @@ export function BottomPanel() {
           </button>
         ))}
         <div className="bottom-tabs-spacer" />
-        <span className="bottom-height-hint">{height}px</span>
+        <button
+          className={`bottom-tab ${activeTab === 'log' ? 'active' : ''}`}
+          onClick={() => setActiveTab('log')}
+          style={{ color: activeTab === 'log' ? '#58a6ff' : '#4a7ab5', borderColor: activeTab === 'log' ? '#58a6ff' : 'transparent' }}
+        >
+          ⬡ Activity Log {logs.length > 0 && <span style={{ fontSize: 9, marginLeft: 4, color: '#484f58' }}>{logs.length}</span>}
+        </button>
+        <button onClick={() => setHeight(DEFAULT_HEIGHT)} title="Reset height" style={{ background: 'none', border: 'none', color: '#484f58', cursor: 'pointer', fontSize: 12, padding: '0 6px' }}>⊟</button>
       </div>
-      <pre className="bottom-content">{content}</pre>
+      {activeTab === 'log' ? (
+        <div style={{
+          flex: 1, display: 'flex', flexDirection: 'column',
+          background: '#0d1117', fontFamily: "'SF Mono', 'Fira Code', monospace",
+        }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 16,
+            background: '#161b22', borderBottom: '1px solid #21262d',
+            padding: '0 12px', height: 26, flexShrink: 0,
+          }}>
+            <span style={{ fontSize: 11, color: '#58a6ff', fontWeight: 600, letterSpacing: '0.5px' }}>ACTIVITY LOG</span>
+            <span style={{ fontSize: 10, color: '#484f58' }}>{logs.length} entries</span>
+          </div>
+          <div style={{ flex: 1, overflowY: 'auto', padding: '6px 16px', scrollbarWidth: 'thin', scrollbarColor: '#2a2d3e #0d1117' }}>
+            {logs.length === 0
+              ? <div style={{ fontSize: 12, color: '#6e7681', marginTop: 8, fontStyle: 'italic' }}>— waiting for activity —</div>
+              : logs.map((l) => (
+                <div key={l.id} style={{ fontSize: 12.5, lineHeight: '22px', color: LEVEL_COLOR[l.level] ?? '#e2e8f0', display: 'flex', gap: 10 }}>
+                  <span style={{ color: '#484f58', flexShrink: 0 }}>{l.ts}</span>
+                  <span>{l.msg}</span>
+                </div>
+              ))
+            }
+            <div ref={logBottomRef} />
+          </div>
+        </div>
+      ) : (
+        <pre className="bottom-content">{content}</pre>
+      )}
     </div>
   );
 }

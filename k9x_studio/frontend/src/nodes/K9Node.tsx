@@ -24,7 +24,7 @@ const handleStyle = (color: string) => ({
 
 export function K9Node({ id, data, selected }: NodeProps) {
   const d = data as NodeData;
-  const { edges, nodes, toggleSquadCollapse } = useStore();
+  const { edges, nodes, toggleSquadCollapse, layoutCanvas } = useStore();
   const icon = ICONS[d.componentType] ?? '◉';
 
   if (d.system) {
@@ -129,7 +129,11 @@ export function K9Node({ id, data, selected }: NodeProps) {
                 justifyContent: 'center',
                 letterSpacing: '0.04em',
               }}
-              onClick={(e) => { e.stopPropagation(); toggleSquadCollapse(id); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleSquadCollapse(id);
+                setTimeout(() => layoutCanvas(), 300);
+              }}
               title={collapsed ? 'Expand agents' : 'Collapse agents'}
             >
               {collapsed ? '▶' : '▼'} {agentCount} agent{agentCount !== 1 ? 's' : ''}
