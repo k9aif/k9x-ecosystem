@@ -18,33 +18,37 @@ LABEL org.opencontainers.image.title="k9x_studio" \
 
 WORKDIR /app
 
-# git is required by the clone-framework API endpoint
 RUN apt-get update && apt-get install -y --no-install-recommends git \
     && rm -rf /var/lib/apt/lists/*
 
-# Python dependencies
+# Studio backend dependencies — requirements.txt now declares k9-aif>=1.2.6
+# directly (studiox builds on the published package, not framework internals)
 COPY k9x_studio/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Backend source
 COPY k9x_studio/backend/ ./backend/
 
-# Studio Jinja2 templates (validation_loop, critic_actor, etc.)
+# Studio Jinja2 templates
 COPY k9x_studio/backend/templates/ ./backend/templates/
 
-# Generator templates (BaseAgent, config — canonical ABB templates)
-COPY k9-aif-framework/generator/templates/ ./generator/templates/
+# studiox's own SBB/ABB layers + agentized spec-import flow
+# (router/agent extensions, orchestrators, agents, YAML-defined squads —
+# all imported at runtime, e.g. orchestrators -> agents -> studio_core/studio_agents)
+COPY k9x_studio/studio_core/   ./studio_core/
+COPY k9x_studio/studio_agents/ ./studio_agents/
+COPY k9x_studio/orchestrators/ ./orchestrators/
+COPY k9x_studio/agents/        ./agents/
+COPY k9x_studio/squads/        ./squads/
 
-# ABB source — included for future studio features
-COPY k9-aif-framework/k9_aif_abb/ ./k9_aif_abb/
+# Generator templates from k9-aif package (installed above via pip)
+# Fall back: copy from framework source if present
+COPY k9-aif-framework/generator/templates/ ./generator/templates/
 
 # Pre-built React frontend
 COPY --from=frontend-build /build/frontend/dist ./frontend/dist
 
-# Tell scaffold_service where generator templates live
 ENV K9X_GENERATOR_TEMPLATES_DIR=/app/generator/templates
-
-# Mount your local projects folder here:  -v ~/k9x-projects:/k9x/projects
 ENV K9X_PROJECTS_ROOT=/k9x/projects
 VOLUME ["/k9x/projects"]
 
