@@ -4,9 +4,15 @@ __pycache__/
 .DS_Store
 *.tar.gz
 
-# k9x_studio
+# k9x_studio (removed — superseded by k9x_studiox)
 k9x_studio/frontend/node_modules/
 k9x_studio/frontend/dist/
+
+# k9x_studiox is its own git repo (github.com/k9aif/studiox)
+k9x_studiox/
+
+# local backup of the old studio, not for version control
+retired_old_k9x_studio/
 
 # local framework clone used by build.sh — not committed
 k9-aif-framework/
