@@ -21,8 +21,8 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends git \
     && rm -rf /var/lib/apt/lists/*
 
-# Studio backend dependencies — requirements.txt now declares k9-aif>=1.2.6
-# directly (studiox builds on the published package, not framework internals)
+# Studio backend dependencies — requirements.txt declares k9-aif[s3]>=1.4.0
+# (pulls boto3 for S3/MinIO object storage support)
 COPY k9x_studio/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
