@@ -81,9 +81,9 @@ k9x_dashboard/
   run.sh
 ```
 
-- **Port**: 8087 (next free slot after HIL's 8086; Studio/Continuum/
-  Satan/Repo already own their own ports — confirm no clash before first
-  run).
+- **Port**: 8089 (Ravi's assignment, matches the real Cloudflare tunnel
+  config for dashboard.k9x.ai -- see /etc/cloudflared/config.yaml on the
+  deploy host).
 - **No proxy.** The dashboard never calls another app's write endpoints
   and never embeds another app's UI in an iframe for the MVP — a card with
   a name, status, and an "Open →" link that does `window.open(url,
@@ -187,7 +187,8 @@ Router/Orchestrator may publish):
 
 ## Decisions needed from Ravi before building
 
-1. **Port 8087** — confirm no clash with anything already claiming it.
+1. ~~Port~~ — RESOLVED: 8089, per Ravi's own Cloudflare tunnel config
+   (`dashboard.k9x.ai → http://localhost:8089`), DNS CNAME already created.
 2. **Read-only DB role for `k9hil`** — OK to create one, or prefer the
    dashboard call HIL's existing `/dashboard` API endpoint instead of
    querying Postgres directly? (API call is a cleaner boundary; direct DB

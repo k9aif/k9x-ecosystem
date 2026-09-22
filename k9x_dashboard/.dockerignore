@@ -1,0 +1,10 @@
+.env
+.git/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+media/
+dashboard_plan.md
+Input_from_Grok.md

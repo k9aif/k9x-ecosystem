@@ -16,5 +16,5 @@ if [ ! -f ".env" ]; then
   exit 1
 fi
 
-echo "k9x Dashboard → http://localhost:8087"
+echo "k9x Dashboard → http://localhost:8089"
 python3 main.py

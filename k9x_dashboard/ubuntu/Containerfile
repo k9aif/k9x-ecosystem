@@ -1,0 +1,28 @@
+# k9x_dashboard — read-only ecosystem catalog + HIL snapshot
+# Single container, Python only -- no frontend build step (static webui/
+# is plain HTML/CSS/JS, served as-is). Build context is this project's own
+# directory (no sibling-repo dependency, unlike some other ecosystem
+# projects) -- see build-run.sh.
+
+FROM registry.access.redhat.com/ubi9/python-311:latest
+USER root
+
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip \
+ && pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+EXPOSE 8089
+
+HEALTHCHECK --interval=30s --timeout=8s --start-period=15s --retries=3 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8089/health')" \
+      || exit 1
+
+USER 1001
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8089"]
