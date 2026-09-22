@@ -20,6 +20,7 @@ load_dotenv()
 
 from backend.catalog import get_catalog_with_status
 from backend.hil_snapshot import get_hil_snapshot
+from backend.gpu_telemetry import get_telemetry as get_gpu_telemetry
 
 _ROOT   = Path(__file__).resolve().parent
 _WEBUI  = _ROOT / "webui"
@@ -45,6 +46,11 @@ def catalog():
 @app.get("/api/hil-snapshot")
 def hil_snapshot():
     return get_hil_snapshot()
+
+
+@app.get("/api/gpu-telemetry")
+def gpu_telemetry():
+    return get_gpu_telemetry()
 
 
 @app.get("/{full_path:path}")

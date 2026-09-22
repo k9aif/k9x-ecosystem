@@ -94,6 +94,66 @@ function renderHilSnapshot(snapshot) {
   `;
 }
 
+function telemetryRow(label, value, pct, level) {
+  const cls = level ? ` ${level}` : "";
+  const bar = pct != null
+    ? `<div class="telemetry-bar-track"><div class="telemetry-bar-fill" style="width:${Math.min(100, Math.max(0, pct))}%"></div></div>`
+    : "";
+  return `<div class="telemetry-row${cls}"><div class="label">${label}</div><div class="value">${value}</div>${bar}</div>`;
+}
+
+function renderGpuTelemetry(d) {
+  const el = document.getElementById("gpu-telemetry");
+  if (!el) return;
+
+  if (d.error || d.temperatureC == null) {
+    el.innerHTML = `<div class="telemetry-offline">Telemetry server unreachable</div>`;
+    return;
+  }
+
+  const limit = d.temp_limit_c ?? 85;
+  const temp = d.temperatureC;
+  const tempLevel = temp >= limit ? "critical" : temp >= limit - 10 ? "warn" : "";
+  const gpuLoadLevel = d.gpuUtilizationPct >= 90 ? "warn" : "";
+  const memPct = d.memoryTotalMiB ? (d.memoryUsedMiB / d.memoryTotalMiB) * 100 : null;
+
+  let html = "";
+  html += telemetryRow("GPU Load", `${d.gpuUtilizationPct ?? "--"}%`, d.gpuUtilizationPct, gpuLoadLevel);
+  html += telemetryRow("GPU Temperature", `${temp}°C`, (temp / limit) * 100, tempLevel);
+  html += telemetryRow(
+    "GPU Memory",
+    `${d.memoryUsedMiB ?? "--"} / ${d.memoryTotalMiB ?? "--"} MiB`,
+    memPct,
+    memPct != null && memPct >= 90 ? "warn" : "",
+  );
+  if (d.cpuLoadPct != null) {
+    html += telemetryRow("CPU Load", `${d.cpuLoadPct}%`, d.cpuLoadPct, d.cpuLoadPct >= 90 ? "warn" : "");
+  }
+  if (d.cpuMemory) {
+    const cpuMemPct = d.cpuMemory.totalMiB ? (d.cpuMemory.usedMiB / d.cpuMemory.totalMiB) * 100 : null;
+    html += telemetryRow(
+      "CPU Memory",
+      `${d.cpuMemory.usedMiB} / ${d.cpuMemory.totalMiB} MiB`,
+      cpuMemPct,
+      cpuMemPct != null && cpuMemPct >= 90 ? "warn" : "",
+    );
+  }
+  if (d.cpuTempC != null) {
+    html += telemetryRow("CPU Temperature", `${d.cpuTempC}°C`, null, "");
+  }
+
+  el.innerHTML = html;
+}
+
+async function pollGpuTelemetry() {
+  try {
+    const d = await api("/api/gpu-telemetry");
+    renderGpuTelemetry(d);
+  } catch (e) {
+    renderGpuTelemetry({ error: e.message });
+  }
+}
+
 async function init() {
   try {
     const catalogRes = await api("/api/catalog");
@@ -116,6 +176,9 @@ async function init() {
     document.getElementById("hil-snapshot").innerHTML =
       `<p class="muted">Failed to load HIL snapshot: ${e.message}</p>`;
   }
+
+  pollGpuTelemetry();
+  setInterval(pollGpuTelemetry, 3000);
 }
 
 init();

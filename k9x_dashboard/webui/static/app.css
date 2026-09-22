@@ -3,6 +3,7 @@
   --bg-card:      #1e293b;
   --bg-header:    #1e293b;
   --border:       #334155;
+  --border-subtle: rgba(148, 163, 184, 0.12);
   --text:         #e2e8f0;
   --text-muted:   #94a3b8;
   --accent:       #6366f1;
@@ -10,6 +11,7 @@
   --up:           #22c55e;
   --down:         #ef4444;
   --unknown:      #64748b;
+  --warn:         #f59e0b;
 }
 
 * { box-sizing: border-box; }
@@ -46,9 +48,24 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
   color: var(--text-muted);
 }
 
-.main {
-  max-width: 1100px;
+.layout {
+  max-width: 1340px;
   margin: 0 auto;
+  display: flex;
+  align-items: flex-start;
+}
+
+.sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  padding: 32px 20px;
+  border-right: 1px solid var(--border-subtle);
+  min-height: calc(100vh - 65px);
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
   padding: 32px 24px;
   display: flex;
   flex-direction: column;
@@ -154,6 +171,52 @@ table.hil-table tr:last-child td { border-bottom: none; }
 .critical-badge {
   color: var(--down);
   font-weight: 700;
+}
+
+.telemetry-row {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.telemetry-row:last-child { border-bottom: none; }
+
+.telemetry-row .label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.telemetry-row .value {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.telemetry-row.warn .value { color: var(--warn); }
+.telemetry-row.critical .value { color: var(--down); }
+
+.telemetry-bar-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border-subtle);
+  overflow: hidden;
+}
+
+.telemetry-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent);
+  transition: width 0.4s ease;
+}
+
+.telemetry-row.warn .telemetry-bar-fill { background: var(--warn); }
+.telemetry-row.critical .telemetry-bar-fill { background: var(--down); }
+
+.telemetry-offline {
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 8px 0;
 }
 
 .footer {

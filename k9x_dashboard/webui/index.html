@@ -12,21 +12,30 @@
     <div class="header-title">Ecosystem Dashboard</div>
   </header>
 
-  <main class="main">
-    <section>
-      <h2 class="section-title">K9X Ecosystem</h2>
-      <div id="catalog-grid" class="catalog-grid">
+  <div class="layout">
+    <aside class="sidebar">
+      <h2 class="section-title">Host Machine</h2>
+      <div id="gpu-telemetry">
         <p class="muted">Loading…</p>
       </div>
-    </section>
+    </aside>
 
-    <section>
-      <h2 class="section-title">HIL Snapshot</h2>
-      <div id="hil-snapshot">
-        <p class="muted">Loading…</p>
-      </div>
-    </section>
-  </main>
+    <main class="main">
+      <section>
+        <h2 class="section-title">K9X Ecosystem</h2>
+        <div id="catalog-grid" class="catalog-grid">
+          <p class="muted">Loading…</p>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="section-title">HIL Snapshot</h2>
+        <div id="hil-snapshot">
+          <p class="muted">Loading…</p>
+        </div>
+      </section>
+    </main>
+  </div>
 
   <footer class="footer">
     <span>k9x_dashboard — read-only catalog + launch point. No task actions happen here; open HIL directly for that.</span>
