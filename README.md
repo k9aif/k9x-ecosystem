@@ -17,74 +17,30 @@ No LLM required. Fully air-gapped. Works with Podman or Docker.
 
 ---
 
-## Quick start — no git clone needed
+## Quick start
 
-Requires [Podman](https://podman.io/docs/installation) or [Docker](https://docs.docker.com/get-docker/).
+Requires [Podman](https://podman.io/docs/installation). Builds and runs locally — there is no published image to pull; GitHub only stores this source.
 
 ```bash
-mkdir -p ~/k9x-studio-working
-
-podman run -d \
-  --name k9x_studio \
-  -p 8080:8080 \
-  -e K9X_PROJECTS_ROOT="/k9x/projects" \
-  -v ~/k9x-studio-working:/k9x/projects:Z \
-  ghcr.io/k9aif/k9x-studio:latest
+git clone https://github.com/k9aif/k9x-ecosystem.git
+cd k9x-ecosystem/k9x_studio
+cp .env.sample .env    # fill in your LLM endpoint and any other values first
+./ubuntu/build-run.sh all
 ```
 
-The volume mount maps your local folder into the container:
+Open **http://localhost:8081** — Studio opens directly.
 
-```
-~/k9x-studio-working   ← your machine (Mac / Linux)
-        ↕  mounted as
-/k9x/projects          ← inside the container
-```
-
-Generated project scaffolds land in `~/k9x-studio-working/k9_projects/<your-project>/` on your machine.
-
-Open **http://localhost:8080** — Studio opens directly, no setup required.
-
-> **Docker users:** replace `podman` with `docker` and drop the `:Z` flag from the volume mount.
+Generated project scaffolds land in `~/containers/volumes/k9x-studio/projects/k9_projects/<your-project>/` on the host running the container.
 
 ---
 
-## Stop / restart
+## Stop / rebuild
 
 ```bash
-podman stop k9x_studio    # pause
-podman start k9x_studio   # resume
+./ubuntu/build-run.sh stop     # stop the container
+./ubuntu/build-run.sh logs     # tail logs
+./ubuntu/build-run.sh all      # rebuild + restart after pulling new code
 ```
-
-To pull the latest image and restart fresh:
-
-```bash
-podman stop k9x_studio && podman rm k9x_studio
-podman pull ghcr.io/k9aif/k9x-studio:latest
-podman run -d --name k9x_studio -p 8080:8080 \
-  -e K9X_PROJECTS_ROOT="/k9x/projects" \
-  -v ~/k9x-studio-working:/k9x/projects:Z \
-  ghcr.io/k9aif/k9x-studio:latest
-```
-
----
-
-## Custom port or working folder
-
-```bash
-# Custom port (host 9090 → container 8080)
-podman run -d --name k9x_studio -p 9090:8080 \
-  -e K9X_PROJECTS_ROOT="/k9x/projects" \
-  -v ~/k9x-studio-working:/k9x/projects:Z \
-  ghcr.io/k9aif/k9x-studio:latest
-
-# Custom local folder (~/my-projects on host → /k9x/projects in container)
-podman run -d --name k9x_studio -p 8080:8080 \
-  -e K9X_PROJECTS_ROOT="/k9x/projects" \
-  -v ~/my-projects:/k9x/projects:Z \
-  ghcr.io/k9aif/k9x-studio:latest
-```
-
-The container-side path `/k9x/projects` is fixed — always mount your chosen host folder there.
 
 ---
 
@@ -227,7 +183,7 @@ Terminal 1 — backend:
 ```bash
 cd k9x_studio
 source .venv/bin/activate
-K9X_GENERATOR_TEMPLATES_DIR=../k9-aif-framework/generator/templates \
+K9X_GENERATOR_TEMPLATES_DIR=./k9x/_generator_templates \
   uvicorn backend.main:app --host 0.0.0.0 --port 8080 --reload
 ```
 
@@ -239,20 +195,6 @@ npm run dev
 ```
 
 Open **http://localhost:5173**
-
----
-
-## Self-hosted deployment (any Podman server)
-
-Deploy to any SSH-accessible machine running Podman — Linux, Mac, or a cloud VM.
-
-```bash
-git clone https://github.com/k9aif/k9x-ecosystem.git
-cd k9x-ecosystem
-REMOTE_HOST=your-server REMOTE_USER=you ./deployment/deploy-remote.sh
-```
-
-Builds the image locally, ships it over SSH, starts the pod on the remote machine. No internet access required on the remote host.
 
 ---
 

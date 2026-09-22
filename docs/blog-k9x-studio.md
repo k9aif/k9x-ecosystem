@@ -103,30 +103,16 @@ The `config.yaml` is the single source of truth for the entire system. Everythin
 
 ### Quick Start
 
-K9X Studio runs as a container. No installation, no build step, no Python environment to set up.
+K9X Studio builds and runs locally via Podman — clone it, configure your LLM endpoint, and run one script.
 
 ```bash
-mkdir -p ~/k9x-studio-working
-
-podman run -d \
-  --name k9x_studio \
-  -p 8080:8080 \
-  -e K9X_PROJECTS_ROOT="/k9x/projects" \
-  -v ~/k9x-studio-working:/k9x/projects:Z \
-  ghcr.io/k9aif/k9x-studio:latest
+git clone https://github.com/k9aif/k9x-ecosystem.git
+cd k9x-ecosystem/k9x_studio
+cp .env.sample .env    # fill in your LLM endpoint and any other values first
+./ubuntu/build-run.sh all
 ```
 
-The volume mount maps your local folder into the container:
-
-```
-~/k9x-studio-working   ← your machine
-        ↕  mounted as
-/k9x/projects          ← inside the container
-```
-
-Open **http://localhost:8080**. Studio opens directly on the canvas — no setup screen, no configuration required.
-
-> Docker users: replace `podman` with `docker` and drop the `:Z` flag.
+Open **http://localhost:8081**. Studio opens directly on the canvas — no setup screen, no configuration required beyond the `.env` step above.
 
 ### What Gets Generated
 
