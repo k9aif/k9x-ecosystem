@@ -154,7 +154,7 @@ async function pollGpuTelemetry() {
   }
 }
 
-async function init() {
+async function refreshCatalog() {
   try {
     const catalogRes = await api("/api/catalog");
     renderCatalog(catalogRes.apps);
@@ -168,7 +168,9 @@ async function init() {
     document.getElementById("catalog-grid").innerHTML =
       `<p class="muted">Failed to load catalog: ${e.message}</p>`;
   }
+}
 
+async function refreshHilSnapshot() {
   try {
     const snapshot = await api("/api/hil-snapshot");
     renderHilSnapshot(snapshot);
@@ -176,6 +178,20 @@ async function init() {
     document.getElementById("hil-snapshot").innerHTML =
       `<p class="muted">Failed to load HIL snapshot: ${e.message}</p>`;
   }
+}
+
+async function init() {
+  await refreshCatalog();
+  await refreshHilSnapshot();
+
+  // Auto-refresh -- a card showing Down might actually be back up (or
+  // vice versa) since the last load; re-check rather than requiring a
+  // manual browser reload. 30s matches the backend's own catalog cache
+  // TTL (catalog.py) -- polling faster would just re-fetch the same
+  // cached result. HIL snapshot has no backend cache, but 30s is a
+  // reasonable cadence for task-queue counts (not truly real-time data).
+  setInterval(refreshCatalog, 30000);
+  setInterval(refreshHilSnapshot, 30000);
 
   pollGpuTelemetry();
   setInterval(pollGpuTelemetry, 3000);
