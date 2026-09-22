@@ -13,13 +13,24 @@
 # apps are configured for the same local port. Doesn't matter in
 # production (separate Cloudflare-tunneled subdomains), but the two can't
 # both run locally at once as configured today.
+#
+# health_path is /health for Continuum/Repo/HIL (confirmed real JSON:
+# {"status":"ok",...}) but /api/health for Studio and SATAN -- their
+# plain /health is masked by their own SPA's catch-all route, which
+# returns 200 with the app's index.html for ANY unmatched path (confirmed
+# live 2026-09-22: studio.k9x.ai/health served a full HTML page, not
+# JSON, despite the response claiming content-type: application/json --
+# was silently showing "up" even if a genuinely-down backend were being
+# masked by a still-cached static frontend). Verify with the response
+# BODY, not just the status code, before trusting any new entry's
+# health_path -- a catch-all route makes almost any path return 200.
 
 - name: Designer Studio
   slug: studio
   description: Visual drag-and-drop K9-AIF architecture builder — canvas → Generate Scaffold
   url_prod: https://studio.k9x.ai
   url_local: http://localhost:8090
-  health_path: /health
+  health_path: /api/health
   category: platform
 
 - name: Enterprise Continuum
@@ -51,5 +62,5 @@
   description: Adversarial red-team harness proving k9x_Shield containment
   url_prod: https://satan.k9x.ai
   url_local: null
-  health_path: /health
+  health_path: /api/health
   category: security
