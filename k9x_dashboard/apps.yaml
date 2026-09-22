@@ -1,0 +1,55 @@
+# k9x_dashboard — application catalog
+# Hand-maintained, not auto-discovered (see dashboard_plan.md's reasoning:
+# ~10 apps, changes rarely, a live health probe already catches staleness).
+#
+# Only the 5 products Ravi confirmed as "live ecosystem" (2026-09-21) are
+# listed here for v1. Other real apps (k9chat, EOC, DAS, k9x_testcases)
+# exist but don't have confirmed production subdomains/local ports yet --
+# add them once verified rather than guessing.
+#
+# Known issue, not fixed here (out of scope for this dashboard): HIL's
+# main.py hardcodes port 8086 regardless of its own .env's REPO_PORT, and
+# Enterprise Repository's run.sh genuinely uses REPO_PORT=8086 too -- both
+# apps are configured for the same local port. Doesn't matter in
+# production (separate Cloudflare-tunneled subdomains), but the two can't
+# both run locally at once as configured today.
+
+- name: Designer Studio
+  slug: studio
+  description: Visual drag-and-drop K9-AIF architecture builder — canvas → Generate Scaffold
+  url_prod: https://studio.k9x.ai
+  url_local: http://localhost:8090
+  health_path: /health
+  category: platform
+
+- name: Enterprise Continuum
+  slug: continuum
+  description: Governed SBB/ABB catalog — publish, promote, harvest workflow
+  url_prod: https://continuum.k9x.ai
+  url_local: http://localhost:8085
+  health_path: /health
+  category: platform
+
+- name: Enterprise Repository
+  slug: repo
+  description: TOGAF Architecture Repository — governed artifact/standards catalog, Wikipedia-style facade
+  url_prod: https://repo.k9x.ai
+  url_local: http://localhost:8086
+  health_path: /health
+  category: platform
+
+- name: HIL
+  slug: hil
+  description: Human-in-the-Loop case management — Kafka-native task escalation
+  url_prod: https://hil.k9x.ai
+  url_local: http://localhost:8086
+  health_path: /health
+  category: platform
+
+- name: SATAN
+  slug: satan
+  description: Adversarial red-team harness proving k9x_Shield containment
+  url_prod: https://satan.k9x.ai
+  url_local: null
+  health_path: /health
+  category: security

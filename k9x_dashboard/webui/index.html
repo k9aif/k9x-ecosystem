@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>K9X Dashboard</title>
+<link rel="stylesheet" href="/static/app.css" />
+</head>
+<body>
+  <header class="header">
+    <a class="header-logo" href="https://k9x.ai">K9X</a>
+    <div class="header-title">Ecosystem Dashboard</div>
+  </header>
+
+  <main class="main">
+    <section>
+      <h2 class="section-title">Applications</h2>
+      <div id="catalog-grid" class="catalog-grid">
+        <p class="muted">Loading…</p>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="section-title">HIL Snapshot</h2>
+      <div id="hil-snapshot">
+        <p class="muted">Loading…</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span>k9x_dashboard — read-only catalog + launch point. No task actions happen here; open HIL directly for that.</span>
+  </footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

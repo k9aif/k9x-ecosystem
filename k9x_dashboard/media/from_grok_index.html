@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>THE INTENT — K9-AIF 3D Architecture Demo</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: #020204;
+      font-family: "Inter", system-ui, -apple-system, sans-serif;
+      color: #e8f4ff;
+    }
+    #canvas-container {
+      position: fixed; inset: 0;
+      z-index: 1;
+    }
+    canvas { display: block; width: 100%; height: 100%; }
+
+    #ui {
+      position: fixed; inset: 0;
+      z-index: 10;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 2rem 2.5rem;
+    }
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+    .logo {
+      font-size: 0.7rem;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: #00e5ff;
+      opacity: 0.85;
+    }
+    .logo span { color: #556; font-weight: 400; }
+    .scene-label {
+      font-size: 0.65rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #667;
+      text-align: right;
+    }
+    .scene-label strong {
+      display: block;
+      color: #dde;
+      font-size: 1rem;
+      letter-spacing: 0.04em;
+      margin-top: 0.2rem;
+      font-weight: 500;
+    }
+
+    /* Text sits lower so it doesn't fight the 3D center */
+    .center-text {
+      position: absolute;
+      bottom: 18%;
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+      opacity: 0;
+      transition: opacity 1s ease;
+      max-width: 720px;
+      width: 90%;
+      padding: 1.4rem 1.8rem;
+      background: linear-gradient(to top, rgba(2,2,4,0.92) 0%, rgba(2,2,4,0.75) 60%, transparent 100%);
+      border-radius: 12px;
+    }
+    .center-text.visible { opacity: 1; }
+    .center-text h1 {
+      font-size: clamp(1.5rem, 3.4vw, 2.6rem);
+      font-weight: 300;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+      margin-bottom: 0.55rem;
+      text-shadow: 0 2px 20px rgba(0,0,0,0.9), 0 0 30px rgba(0,0,0,0.6);
+      color: #f0f6ff;
+    }
+    .center-text p {
+      font-size: 0.9rem;
+      color: #9aabbc;
+      letter-spacing: 0.03em;
+      max-width: 520px;
+      margin: 0 auto 0.6rem;
+      line-height: 1.45;
+      text-shadow: 0 1px 8px rgba(0,0,0,0.8);
+    }
+    .center-text .tag {
+      display: inline-block;
+      margin-top: 0.4rem;
+      padding: 0.3rem 0.85rem;
+      border: 1px solid rgba(0, 229, 255, 0.4);
+      border-radius: 999px;
+      font-size: 0.6rem;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: #00e5ff;
+      background: rgba(0, 20, 30, 0.7);
+    }
+    .center-text.chaos .tag {
+      border-color: rgba(255, 60, 60, 0.5);
+      color: #ff6b6b;
+      background: rgba(40, 5, 5, 0.75);
+    }
+    .center-text.chaos h1 { color: #ffecec; }
+
+    .bottom-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    .progress {
+      display: flex;
+      gap: 5px;
+    }
+    .progress-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: #223;
+      transition: all 0.35s ease;
+    }
+    .progress-dot.active {
+      background: #00e5ff;
+      box-shadow: 0 0 8px #00e5ff;
+      transform: scale(1.4);
+    }
+    .progress-dot.chaos-active {
+      background: #ff4444;
+      box-shadow: 0 0 8px #ff4444;
+    }
+    .controls {
+      font-size: 0.6rem;
+      letter-spacing: 0.12em;
+      color: #445;
+      text-transform: uppercase;
+    }
+    .controls kbd {
+      display: inline-block;
+      padding: 0.12rem 0.35rem;
+      margin: 0 0.12rem;
+      border: 1px solid #334;
+      border-radius: 3px;
+      font-family: inherit;
+      color: #778;
+    }
+
+    #final-frame {
+      position: fixed; inset: 0;
+      z-index: 20;
+      background: rgba(2, 2, 4, 0.94);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 1.6s ease;
+    }
+    #final-frame.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    #final-frame h1 {
+      font-size: clamp(1.9rem, 4.5vw, 3.2rem);
+      font-weight: 300;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.4rem;
+      text-align: center;
+      line-height: 1.2;
+    }
+    #final-frame .sub {
+      font-size: 0.95rem;
+      color: #00e5ff;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      margin-bottom: 2.2rem;
+    }
+    #final-frame button {
+      pointer-events: auto;
+      background: transparent;
+      border: 1px solid rgba(0, 229, 255, 0.5);
+      color: #00e5ff;
+      padding: 0.65rem 1.7rem;
+      font-size: 0.7rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      cursor: pointer;
+      border-radius: 999px;
+      transition: all 0.3s;
+    }
+    #final-frame button:hover {
+      background: rgba(0, 229, 255, 0.1);
+      box-shadow: 0 0 22px rgba(0, 229, 255, 0.25);
+    }
+  </style>
+</head>
+<body>
+  <div id="canvas-container"></div>
+
+  <div id="ui">
+    <div class="top-bar">
+      <div class="logo">K9-AIF <span>· Architecture First</span></div>
+      <div class="scene-label">
+        SCENE <span id="scene-num">01</span>
+        <strong id="scene-title">Agentic Chaos</strong>
+      </div>
+    </div>
+
+    <div class="center-text chaos" id="center-text">
+      <h1 id="main-headline">Agentic chaos.<br>No boundaries. No control.</h1>
+      <p id="main-sub">Rogue agents. Malicious prompts. Millions burned on idle compute. Zero governance.</p>
+      <div class="tag" id="main-tag">The Cost of No Architecture</div>
+    </div>
+
+    <div class="bottom-bar">
+      <div class="progress" id="progress"></div>
+      <div class="controls">
+        <kbd>1–8</kbd> scenes
+        <kbd>Space</kbd> pause
+        <kbd>R</kbd> restart
+        <kbd>F</kbd> fullscreen
+      </div>
+    </div>
+  </div>
+
+  <div id="final-frame">
+    <h1>Not Just Agents,<br>Architecture.</h1>
+    <div class="sub">K9-AIF · k9x.ai</div>
+    <button id="replay-btn">Replay Journey</button>
+  </div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.170.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.170.0/examples/jsm/"
+    }
+  }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+    import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+    import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+    import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+    // ─────────────────────────────────────────────
+    // Scene
+    // ─────────────────────────────────────────────
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x020204, 0.018);
+    scene.background = new THREE.Color(0x020204);
+
+    const camera = new THREE.PerspectiveCamera(52, window.innerWidth / window.innerHeight, 0.1, 220);
+    camera.position.set(0, 5, 20);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 0.95;
+    container.appendChild(renderer.domElement);
+
+    const composer = new EffectComposer(renderer);
+    composer.addPass(new RenderPass(scene, camera));
+    const bloomPass = new UnrealBloomPass(
+      new THREE.Vector2(window.innerWidth, window.innerHeight),
+      0.7, 0.35, 0.75
+    );
+    composer.addPass(bloomPass);
+    composer.addPass(new OutputPass());
+
+    // Lights – darker
+    scene.add(new THREE.AmbientLight(0x0a1018, 0.5));
+    const keyLight = new THREE.DirectionalLight(0x00e5ff, 0.9);
+    keyLight.position.set(6, 14, 9);
+    scene.add(keyLight);
+    const fill = new THREE.DirectionalLight(0xff5533, 0.25);
+    fill.position.set(-8, 3, -5);
+    scene.add(fill);
+    const redAccent = new THREE.PointLight(0xff2200, 1.4, 40);
+    redAccent.position.set(0, 2, 0);
+    scene.add(redAccent);
+
+    // ─────────────────────────────────────────────
+    // CHAOS SYSTEM – spaghetti, rogue agents, threats
+    // ─────────────────────────────────────────────
+    const chaosGroup = new THREE.Group();
+    scene.add(chaosGroup);
+
+    // Dense particle storm
+    const stormCount = 2800;
+    const stormPos = new Float32Array(stormCount * 3);
+    const stormVel = new Float32Array(stormCount * 3);
+    const stormCol = new Float32Array(stormCount * 3);
+    for (let i = 0; i < stormCount; i++) {
+      stormPos[i*3]   = (Math.random()-0.5)*70;
+      stormPos[i*3+1] = (Math.random()-0.5)*45;
+      stormPos[i*3+2] = (Math.random()-0.5)*70;
+      stormVel[i*3]   = (Math.random()-0.5)*0.06;
+      stormVel[i*3+1] = (Math.random()-0.5)*0.04;
+      stormVel[i*3+2] = (Math.random()-0.5)*0.06;
+      // Mix of cyan (waste) and red (threat)
+      const isThreat = Math.random() > 0.65;
+      stormCol[i*3]   = isThreat ? 1.0 : 0.1;
+      stormCol[i*3+1] = isThreat ? 0.15 : 0.7;
+      stormCol[i*3+2] = isThreat ? 0.1 : 1.0;
+    }
+    const stormGeo = new THREE.BufferGeometry();
+    stormGeo.setAttribute('position', new THREE.BufferAttribute(stormPos, 3));
+    stormGeo.setAttribute('color', new THREE.BufferAttribute(stormCol, 3));
+    const stormMat = new THREE.PointsMaterial({
+      size: 0.055,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.55,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+    const storm = new THREE.Points(stormGeo, stormMat);
+    chaosGroup.add(storm);
+
+    // Spaghetti connection lines (messy agent-to-agent chaos)
+    const spaghettiGroup = new THREE.Group();
+    chaosGroup.add(spaghettiGroup);
+    const lineCount = 90;
+    const spaghettiLines = [];
+    for (let i = 0; i < lineCount; i++) {
+      const pts = [];
+      const segs = 6 + Math.floor(Math.random()*5);
+      let x = (Math.random()-0.5)*28;
+      let y = (Math.random()-0.5)*16;
+      let z = (Math.random()-0.5)*28;
+      for (let s = 0; s < segs; s++) {
+        pts.push(new THREE.Vector3(x, y, z));
+        x += (Math.random()-0.5)*7;
+        y += (Math.random()-0.5)*4;
+        z += (Math.random()-0.5)*7;
+      }
+      const geo = new THREE.BufferGeometry().setFromPoints(pts);
+      const isMal = Math.random() > 0.55;
+      const mat = new THREE.LineBasicMaterial({
+        color: isMal ? 0xff3344 : 0x2288aa,
+        transparent: true,
+        opacity: isMal ? 0.45 : 0.22
+      });
+      const line = new THREE.Line(geo, mat);
+      line.userData = { speed: 0.3 + Math.random()*0.8, phase: Math.random()*Math.PI*2 };
+      spaghettiGroup.add(line);
+      spaghettiLines.push(line);
+    }
+
+    // Rogue / broken agents (chaotic geometries)
+    const rogueAgents = [];
+    for (let i = 0; i < 18; i++) {
+      const g = new THREE.Group();
+      const type = Math.floor(Math.random()*4);
+      let geo;
+      if (type === 0) geo = new THREE.OctahedronGeometry(0.35 + Math.random()*0.25, 0);
+      else if (type === 1) geo = new THREE.TetrahedronGeometry(0.4 + Math.random()*0.2, 0);
+      else if (type === 2) geo = new THREE.IcosahedronGeometry(0.3 + Math.random()*0.2, 0);
+      else geo = new THREE.BoxGeometry(0.4, 0.4, 0.4);
+
+      const isMalicious = Math.random() > 0.5;
+      const body = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
+        color: isMalicious ? 0xff2244 : 0x3388aa,
+        emissive: isMalicious ? 0x880011 : 0x003344,
+        emissiveIntensity: isMalicious ? 1.1 : 0.5,
+        roughness: 0.4,
+        metalness: 0.5,
+        transparent: true,
+        opacity: 0.85
+      }));
+      g.add(body);
+
+      // Glitchy aura
+      const aura = new THREE.Mesh(
+        new THREE.SphereGeometry(0.7 + Math.random()*0.3, 12, 12),
+        new THREE.MeshBasicMaterial({
+          color: isMalicious ? 0xff2200 : 0x00aacc,
+          transparent: true,
+          opacity: 0.08,
+          side: THREE.BackSide
+        })
+      );
+      g.add(aura);
+
+      g.position.set(
+        (Math.random()-0.5)*26,
+        (Math.random()-0.5)*14,
+        (Math.random()-0.5)*26
+      );
+      g.userData = {
+        vel: new THREE.Vector3(
+          (Math.random()-0.5)*0.04,
+          (Math.random()-0.5)*0.03,
+          (Math.random()-0.5)*0.04
+        ),
+        rotSpeed: (Math.random()-0.5)*0.08,
+        malicious: isMalicious
+      };
+      chaosGroup.add(g);
+      rogueAgents.push(g);
+    }
+
+    // Floating "malicious prompt" fragments (simple text-like planes / shards)
+    const promptShards = [];
+    const shardMat = new THREE.MeshBasicMaterial({
+      color: 0xff3355,
+      transparent: true,
+      opacity: 0.55,
+      side: THREE.DoubleSide
+    });
+    for (let i = 0; i < 22; i++) {
+      const shard = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.9 + Math.random()*1.2, 0.18 + Math.random()*0.12),
+        shardMat.clone()
+      );
+      shard.position.set(
+        (Math.random()-0.5)*30,
+        (Math.random()-0.5)*16,
+        (Math.random()-0.5)*30
+      );
+      shard.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
+      shard.userData = {
+        vel: new THREE.Vector3((Math.random()-0.5)*0.03, (Math.random()-0.5)*0.02, (Math.random()-0.5)*0.03),
+        rot: new THREE.Vector3((Math.random()-0.5)*0.02, (Math.random()-0.5)*0.03, (Math.random()-0.5)*0.02)
+      };
+      chaosGroup.add(shard);
+      promptShards.push(shard);
+    }
+
+    // "Wasted compute" floating bars (vertical bars that pulse red/orange)
+    const wasteBars = [];
+    for (let i = 0; i < 12; i++) {
+      const h = 1.5 + Math.random()*4;
+      const bar = new THREE.Mesh(
+        new THREE.BoxGeometry(0.18, h, 0.18),
+        new THREE.MeshStandardMaterial({
+          color: 0xff6622,
+          emissive: 0xff3300,
+          emissiveIntensity: 0.8,
+          transparent: true,
+          opacity: 0.7
+        })
+      );
+      bar.position.set(
+        (Math.random()-0.5)*22,
+        h/2 - 2,
+        (Math.random()-0.5)*22
+      );
+      bar.userData = { baseH: h, phase: Math.random()*Math.PI*2 };
+      chaosGroup.add(bar);
+      wasteBars.push(bar);
+    }
+
+    // ─────────────────────────────────────────────
+    // ORDERED SYSTEM (appears later)
+    // ─────────────────────────────────────────────
+    const orderGroup = new THREE.Group();
+    orderGroup.visible = false;
+    scene.add(orderGroup);
+
+    // Intent core
+    const intentGroup = new THREE.Group();
+    orderGroup.add(intentGroup);
+    const intentCore = new THREE.Mesh(
+      new THREE.SphereGeometry(0.5, 64, 64),
+      new THREE.MeshStandardMaterial({
+        color: 0x00e5ff,
+        emissive: 0x00b8d4,
+        emissiveIntensity: 1.9,
+        roughness: 0.12,
+        metalness: 0.65
+      })
+    );
+    intentGroup.add(intentCore);
+    const intentGlow = new THREE.Mesh(
+      new THREE.SphereGeometry(0.8, 32, 32),
+      new THREE.MeshBasicMaterial({
+        color: 0x00e5ff,
+        transparent: true,
+        opacity: 0.11,
+        side: THREE.BackSide
+      })
+    );
+    intentGroup.add(intentGlow);
+
+    // Zero Trust shield
+    const shieldGroup = new THREE.Group();
+    shieldGroup.visible = false;
+    orderGroup.add(shieldGroup);
+    const shieldRing = new THREE.Mesh(
+      new THREE.TorusGeometry(1.55, 0.03, 16, 100),
+      new THREE.MeshStandardMaterial({
+        color: 0x00e5ff,
+        emissive: 0x00e5ff,
+        emissiveIntensity: 1.6,
+        roughness: 0.2,
+        metalness: 0.85,
+        transparent: true,
+        opacity: 0.9
+      })
+    );
+    shieldRing.rotation.x = Math.PI / 2;
+    shieldGroup.add(shieldRing);
+    const shieldDome = new THREE.Mesh(
+      new THREE.SphereGeometry(1.65, 32, 32, 0, Math.PI*2, 0, Math.PI/2),
+      new THREE.MeshStandardMaterial({
+        color: 0x00e5ff,
+        emissive: 0x003344,
+        emissiveIntensity: 0.35,
+        roughness: 0.1,
+        metalness: 0.9,
+        transparent: true,
+        opacity: 0.16,
+        side: THREE.DoubleSide
+      })
+    );
+    shieldGroup.add(shieldDome);
+
+    // Platform
+    const platformGroup = new THREE.Group();
+    platformGroup.visible = false;
+    orderGroup.add(platformGroup);
+    const platform = new THREE.Mesh(
+      new THREE.CylinderGeometry(5.2, 5.2, 0.07, 64),
+      new THREE.MeshStandardMaterial({
+        color: 0x060c14,
+        emissive: 0x002233,
+        emissiveIntensity: 0.35,
+        roughness: 0.35,
+        metalness: 0.85,
+        transparent: true,
+        opacity: 0.75
+      })
+    );
+    platform.position.y = -0.45;
+    platformGroup.add(platform);
+    for (let r = 1.4; r <= 4.8; r += 1.15) {
+      const ring = new THREE.Mesh(
+        new THREE.TorusGeometry(r, 0.012, 8, 80),
+        new THREE.MeshBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.22 })
+      );
+      ring.rotation.x = Math.PI / 2;
+      ring.position.y = -0.4;
+      platformGroup.add(ring);
+    }
+
+    // Governed agents
+    const agents = [];
+    const agentConfigs = [
+      { shape: 'octa',  color: 0x00e5ff },
+      { shape: 'ico',   color: 0x44eebb },
+      { shape: 'tetra', color: 0xffcc55 },
+      { shape: 'octa',  color: 0xff77aa },
+      { shape: 'ico',   color: 0xaa88ff }
+    ];
+    agentConfigs.forEach((cfg, i) => {
+      const g = new THREE.Group();
+      g.visible = false;
+      let geo;
+      if (cfg.shape === 'octa') geo = new THREE.OctahedronGeometry(0.4, 0);
+      else if (cfg.shape === 'ico') geo = new THREE.IcosahedronGeometry(0.36, 0);
+      else geo = new THREE.TetrahedronGeometry(0.45, 0);
+
+      const body = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
+        color: cfg.color,
+        emissive: cfg.color,
+        emissiveIntensity: 0.65,
+        roughness: 0.22,
+        metalness: 0.7,
+        transparent: true,
+        opacity: 0.92
+      }));
+      g.add(body);
+      const aura = new THREE.Mesh(
+        new THREE.TorusGeometry(0.68, 0.016, 12, 64),
+        new THREE.MeshBasicMaterial({ color: cfg.color, transparent: true, opacity: 0.5 })
+      );
+      aura.rotation.x = Math.PI / 2;
+      g.add(aura);
+      const shell = new THREE.Mesh(
+        new THREE.SphereGeometry(0.82, 20, 20),
+        new THREE.MeshBasicMaterial({ color: cfg.color, transparent: true, opacity: 0.055, side: THREE.BackSide })
+      );
+      g.add(shell);
+      orderGroup.add(g);
+      agents.push(g);
+    });
+
+    // Model router nodes
+    const routerGroup = new THREE.Group();
+    routerGroup.visible = false;
+    orderGroup.add(routerGroup);
+    const providers = [
+      { pos: [-3.2, 1.3, -2.2], color: 0x00ccff },
+      { pos: [0, 2.1, -3.1],    color: 0x44ff88 },
+      { pos: [3.2, 1.3, -2.2],  color: 0xffaa00 }
+    ];
+    providers.forEach(p => {
+      const node = new THREE.Mesh(
+        new THREE.BoxGeometry(0.45, 0.45, 0.45),
+        new THREE.MeshStandardMaterial({
+          color: p.color,
+          emissive: p.color,
+          emissiveIntensity: 0.75,
+          roughness: 0.28,
+          metalness: 0.65
+        })
+      );
+      node.position.set(...p.pos);
+      routerGroup.add(node);
+      const pts = [new THREE.Vector3(...p.pos), new THREE.Vector3(0, 0.4, 0)];
+      const line = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints(pts),
+        new THREE.LineBasicMaterial({ color: p.color, transparent: true, opacity: 0.4 })
+      );
+      routerGroup.add(line);
+    });
+
+    // Soft clean particle field for ordered world
+    const cleanCount = 900;
+    const cleanPos = new Float32Array(cleanCount * 3);
+    for (let i = 0; i < cleanCount; i++) {
+      cleanPos[i*3]   = (Math.random()-0.5)*50;
+      cleanPos[i*3+1] = (Math.random()-0.5)*30;
+      cleanPos[i*3+2] = (Math.random()-0.5)*50;
+    }
+    const cleanGeo = new THREE.BufferGeometry();
+    cleanGeo.setAttribute('position', new THREE.BufferAttribute(cleanPos, 3));
+    const cleanMat = new THREE.PointsMaterial({
+      color: 0x00d4ff,
+      size: 0.04,
+      transparent: true,
+      opacity: 0.35,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+    const cleanParticles = new THREE.Points(cleanGeo, cleanMat);
+    cleanParticles.visible = false;
+    orderGroup.add(cleanParticles);
+
+    // ─────────────────────────────────────────────
+    // Timeline
+    // ─────────────────────────────────────────────
+    const scenes = [
+      {
+        id: 1,
+        title: "Agentic Chaos",
+        headline: "Agentic chaos.<br>No boundaries. No control.",
+        sub: "Rogue agents. Malicious prompts. Spaghetti connections. Zero governance.",
+        tag: "The Cost of No Architecture",
+        chaos: true,
+        duration: 7
+      },
+      {
+        id: 2,
+        title: "The Real Cost",
+        headline: "Millions burned.<br>Compute wasted. Trust broken.",
+        sub: "Companies pay for idle GPUs while ungoverned agents run wild and attackers inject prompts.",
+        tag: "No Architecture Tax",
+        chaos: true,
+        duration: 6.5
+      },
+      {
+        id: 3,
+        title: "Intrusion",
+        headline: "Malicious prompts<br>slip through every layer.",
+        sub: "Without Zero Trust at the architecture boundary, every agent is an open door.",
+        tag: "Ungoverned Attack Surface",
+        chaos: true,
+        duration: 6
+      },
+      {
+        id: 4,
+        title: "Intent Arrives",
+        headline: "A single governed intent<br>enters the system.",
+        sub: "BaseRouter receives it. The architecture begins to impose order.",
+        tag: "BaseRouter",
+        chaos: false,
+        duration: 5.5
+      },
+      {
+        id: 5,
+        title: "Zero Trust",
+        headline: "Every action verified<br>before it can execute.",
+        sub: "Risk-scored. Policy-checked. Context-evaluated. At the architecture layer.",
+        tag: "Zero Trust Execution Layer",
+        chaos: false,
+        duration: 6
+      },
+      {
+        id: 6,
+        title: "Squad Under Governance",
+        headline: "Agents materialize only<br>when policy allows.",
+        sub: "Each inherits ABB contracts. Policy auras engage. No orphan agents.",
+        tag: "BaseSquad · BaseAgent",
+        chaos: false,
+        duration: 6.5
+      },
+      {
+        id: 7,
+        title: "Governed Execution",
+        headline: "Model routing. Boundary checks.<br>Full observability.",
+        sub: "Provider-agnostic inference. Every hand-off audited. Architecture holds.",
+        tag: "ModelRouter · Governance",
+        chaos: false,
+        duration: 6
+      },
+      {
+        id: 8,
+        title: "Tamed",
+        headline: "From chaos to architecture.",
+        sub: "Accountable. Observable. Governed. Ready for production.",
+        tag: "K9-AIF",
+        chaos: false,
+        duration: 5.5
+      }
+    ];
+
+    const progressEl = document.getElementById('progress');
+    scenes.forEach((s, i) => {
+      const dot = document.createElement('div');
+      dot.className = 'progress-dot' + (i === 0 ? ' active chaos-active' : '');
+      progressEl.appendChild(dot);
+    });
+
+    let currentScene = 0;
+    let sceneTime = 0;
+    let playing = true;
+    let totalTime = 0;
+    const clock = new THREE.Clock();
+
+    const centerText = document.getElementById('center-text');
+    const mainHeadline = document.getElementById('main-headline');
+    const mainSub = document.getElementById('main-sub');
+    const mainTag = document.getElementById('main-tag');
+    const sceneNum = document.getElementById('scene-num');
+    const sceneTitle = document.getElementById('scene-title');
+    const finalFrame = document.getElementById('final-frame');
+
+    function updateUI(s) {
+      centerText.classList.remove('visible');
+      setTimeout(() => {
+        mainHeadline.innerHTML = s.headline;
+        mainSub.textContent = s.sub;
+        mainTag.textContent = s.tag;
+        sceneNum.textContent = String(s.id).padStart(2, '0');
+        sceneTitle.textContent = s.title;
+        centerText.classList.toggle('chaos', !!s.chaos);
+        document.querySelectorAll('.progress-dot').forEach((d, i) => {
+          d.classList.toggle('active', i === currentScene);
+          d.classList.toggle('chaos-active', i === currentScene && s.chaos);
+        });
+        centerText.classList.add('visible');
+      }, 350);
+    }
+
+    function setScene(index) {
+      currentScene = index;
+      sceneTime = 0;
+      const s = scenes[index];
+      updateUI(s);
+
+      const inChaos = s.chaos;
+      chaosGroup.visible = inChaos;
+      orderGroup.visible = !inChaos;
+      redAccent.intensity = inChaos ? 1.6 : 0.15;
+
+      if (!inChaos) {
+        // Progressive reveal inside order
+        intentGroup.visible = index >= 3;
+        shieldGroup.visible = index >= 4;
+        platformGroup.visible = index >= 4;
+        agents.forEach((a, i) => {
+          a.visible = index >= 5;
+        });
+        routerGroup.visible = index >= 6;
+        cleanParticles.visible = true;
+      }
+
+      // Camera
+      if (inChaos) {
+        camera.position.set(
+          Math.sin(index)*3,
+          4 + index*0.4,
+          18 - index*0.8
+        );
+      } else if (index === 3) {
+        camera.position.set(0, 3.5, 13);
+      } else if (index === 4) {
+        camera.position.set(2.5, 4, 11);
+      } else if (index === 5) {
+        camera.position.set(-2.5, 5.5, 13);
+      } else if (index === 6) {
+        camera.position.set(3.5, 5.5, 12);
+      } else {
+        camera.position.set(0, 5, 15);
+      }
+    }
+
+    setScene(0);
+    centerText.classList.add('visible');
+
+    // ─────────────────────────────────────────────
+    // Animation
+    // ─────────────────────────────────────────────
+    function animate() {
+      requestAnimationFrame(animate);
+      const dt = clock.getDelta();
+      totalTime += dt;
+
+      if (playing) {
+        sceneTime += dt;
+        if (sceneTime >= scenes[currentScene].duration) {
+          if (currentScene < scenes.length - 1) {
+            setScene(currentScene + 1);
+          } else {
+            playing = false;
+            finalFrame.classList.add('visible');
+          }
+        }
+      }
+
+      // CHAOS animations
+      if (chaosGroup.visible) {
+        // Storm
+        const pos = storm.geometry.attributes.position.array;
+        for (let i = 0; i < stormCount; i++) {
+          pos[i*3]   += stormVel[i*3];
+          pos[i*3+1] += stormVel[i*3+1];
+          pos[i*3+2] += stormVel[i*3+2];
+          if (Math.abs(pos[i*3]) > 35) stormVel[i*3] *= -1;
+          if (Math.abs(pos[i*3+1]) > 22) stormVel[i*3+1] *= -1;
+          if (Math.abs(pos[i*3+2]) > 35) stormVel[i*3+2] *= -1;
+        }
+        storm.geometry.attributes.position.needsUpdate = true;
+        storm.rotation.y = totalTime * 0.04;
+
+        // Spaghetti jitter
+        spaghettiLines.forEach((line, i) => {
+          line.rotation.y = Math.sin(totalTime * line.userData.speed + line.userData.phase) * 0.15;
+          line.rotation.x = Math.cos(totalTime * line.userData.speed * 0.7) * 0.1;
+        });
+
+        // Rogue agents fly around
+        rogueAgents.forEach(a => {
+          a.position.add(a.userData.vel);
+          a.rotation.x += a.userData.rotSpeed;
+          a.rotation.y += a.userData.rotSpeed * 1.3;
+          // Soft bounds
+          ['x','y','z'].forEach((axis, idx) => {
+            if (Math.abs(a.position[axis]) > (idx===1 ? 10 : 18)) a.userData.vel[axis] *= -1;
+          });
+        });
+
+        // Prompt shards
+        promptShards.forEach(s => {
+          s.position.add(s.userData.vel);
+          s.rotation.x += s.userData.rot.x;
+          s.rotation.y += s.userData.rot.y;
+          s.rotation.z += s.userData.rot.z;
+          if (Math.abs(s.position.x) > 20) s.userData.vel.x *= -1;
+          if (Math.abs(s.position.y) > 12) s.userData.vel.y *= -1;
+          if (Math.abs(s.position.z) > 20) s.userData.vel.z *= -1;
+        });
+
+        // Waste bars pulse
+        wasteBars.forEach(b => {
+          const pulse = 0.7 + Math.sin(totalTime * 2.2 + b.userData.phase) * 0.3;
+          b.scale.y = pulse;
+          b.material.emissiveIntensity = 0.5 + pulse * 0.6;
+        });
+      }
+
+      // ORDER animations
+      if (orderGroup.visible) {
+        if (intentGroup.visible) {
+          intentGroup.position.y = Math.sin(totalTime * 1.15) * 0.12;
+          const pulse = 1 + Math.sin(totalTime * 2.4) * 0.035;
+          intentCore.scale.setScalar(pulse);
+          intentGlow.scale.setScalar(pulse * 1.08);
+          intentGroup.rotation.y = totalTime * 0.25;
+        }
+        if (shieldGroup.visible) {
+          shieldRing.rotation.z = totalTime * 0.55;
+          shieldDome.rotation.y = totalTime * 0.12;
+          shieldGroup.position.copy(intentGroup.position);
+        }
+        agents.forEach((agent, i) => {
+          if (!agent.visible) return;
+          const angle = totalTime * 0.32 + (i / agents.length) * Math.PI * 2;
+          const radius = 3.0 + (i % 2) * 0.55;
+          agent.position.x = Math.cos(angle) * radius;
+          agent.position.z = Math.sin(angle) * radius;
+          agent.position.y = Math.sin(totalTime * 1.05 + i) * 0.3 + 0.35;
+          agent.rotation.y = totalTime * 0.7 + i;
+          agent.rotation.x = Math.sin(totalTime * 0.45 + i) * 0.25;
+          if (agent.children[1]) agent.children[1].rotation.z = totalTime * 1.1;
+        });
+        if (platformGroup.visible) platformGroup.rotation.y = totalTime * 0.04;
+        if (routerGroup.visible) {
+          routerGroup.children.forEach((c, i) => {
+            if (c.isMesh && c.geometry.type === 'BoxGeometry') {
+              c.scale.setScalar(1 + Math.sin(totalTime * 1.9 + i) * 0.07);
+            }
+          });
+        }
+        cleanParticles.rotation.y = totalTime * 0.015;
+      }
+
+      camera.lookAt(0, 0.3, 0);
+      composer.render();
+    }
+    animate();
+
+    // Controls
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        playing = !playing;
+        if (finalFrame.classList.contains('visible')) {
+          finalFrame.classList.remove('visible');
+          setScene(0);
+          playing = true;
+        }
+      }
+      if (e.code === 'KeyR') {
+        finalFrame.classList.remove('visible');
+        setScene(0);
+        playing = true;
+      }
+      if (e.code === 'KeyF') {
+        if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+        else document.exitFullscreen();
+      }
+      if (e.code.startsWith('Digit')) {
+        const num = parseInt(e.code.replace('Digit', ''), 10);
+        if (num >= 1 && num <= 8) {
+          finalFrame.classList.remove('visible');
+          setScene(num - 1);
+          playing = true;
+        }
+      }
+    });
+
+    document.getElementById('replay-btn').addEventListener('click', () => {
+      finalFrame.classList.remove('visible');
+      setScene(0);
+      playing = true;
+    });
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      composer.setSize(window.innerWidth, window.innerHeight);
+      bloomPass.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
