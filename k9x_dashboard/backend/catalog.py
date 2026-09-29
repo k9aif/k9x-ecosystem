@@ -50,7 +50,12 @@ def get_catalog_with_status() -> List[Dict[str, Any]]:
         # Prefer prod (the real, publicly reachable instance) for the
         # status dot; fall back to local if prod isn't configured.
         probe_url = app.get("url_prod") or app.get("url_local")
-        status = _probe(probe_url, app.get("health_path", "/health")) if probe_url else "unknown"
+        if app.get("repo_url") and not app.get("url_prod"):
+            # Download-and-run tool: nothing hosted to probe (a url_local on
+            # the dashboard's own host says nothing about the viewer's machine).
+            status = "repo"
+        else:
+            status = _probe(probe_url, app.get("health_path") or "/health") if probe_url else "unknown"
         result.append({**app, "status": status})
 
     _cache["data"] = result

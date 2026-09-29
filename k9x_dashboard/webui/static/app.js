@@ -15,19 +15,22 @@ function renderCatalog(apps) {
     return;
   }
   el.innerHTML = apps.map((app) => {
-    const url = appUrl(app);
-    const linkHtml = url
-      ? `<a class="open-link" href="${url}" target="_blank" rel="noopener">Open →</a>`
-      : `<span class="muted">no URL configured</span>`;
+    const repoOnly = app.status === "repo";
+    const url = repoOnly ? null : appUrl(app);
+    const links = [
+      url ? `<a class="open-link" href="${url}" target="_blank" rel="noopener">Open →</a>` : "",
+      app.repo_url ? `<a class="open-link" href="${app.repo_url}" target="_blank" rel="noopener">GitHub →</a>` : "",
+    ].filter(Boolean).join(" ");
+    const linkHtml = links || `<span class="muted">no URL configured</span>`;
     return `
       <div class="app-card">
         <div class="app-card-top">
           <span class="app-card-name">${app.name}</span>
-          <span class="status-dot ${app.status}" title="${app.status}"></span>
+          ${repoOnly ? "" : `<span class="status-dot ${app.status}" title="${app.status}"></span>`}
         </div>
         <div class="app-card-desc">${app.description || ""}</div>
         <div class="app-card-footer">
-          <span class="status-label">${app.status}</span>
+          <span class="status-label">${repoOnly ? "run locally" : app.status}</span>
           ${linkHtml}
         </div>
       </div>
