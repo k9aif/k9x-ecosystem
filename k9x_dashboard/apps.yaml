@@ -65,14 +65,19 @@
   health_path: /api/health
   category: security
 
-# Download-and-run tools: no hosted instance, so no health probe and no
-# up/down dot -- the card links to the repo instead. Give one a url_prod +
-# health_path later (e.g. a read-only arena.k9x.ai) and it gets both.
+# repo_url adds a GitHub link to a card. Without url_prod the card is
+# download-and-run only (no probe, no up/down dot, "run locally").
+#
+# K9X Arena: arena.k9x.ai is the PUBLIC, read-only showcase (published
+# matches + setup guide; ARENA_MODE=public, :8112). The lab that runs
+# matches is intranet-only (:8111) and deliberately not listed here.
+# /api/health verified 2026-09-29 to return real JSON
+# ({"ok":true,"mode":"showcase"}) and unknown paths 404 -- no SPA catch-all.
 - name: K9X Arena
   slug: arena
   description: LLMs head to head on your own GPU — graded against right answers, starred, and teaching a model router
-  url_prod: null
-  url_local: http://localhost:8111
+  url_prod: https://arena.k9x.ai
+  url_local: null
   repo_url: https://github.com/k9aif/k9x-arena
-  health_path: null
+  health_path: /api/health
   category: evaluation
