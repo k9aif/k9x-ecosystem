@@ -81,3 +81,16 @@
   repo_url: https://github.com/k9aif/k9x-arena
   health_path: /api/health
   category: evaluation
+
+# K9X Sentinel: daily threat watch for K9-AIF. sentinel.k9x.ai runs the real
+# instance (:8114) with an admin login and a read-only demo login (demo/demo)
+# that sees open gaps only as "under private review". /api/health is public
+# and returns {"status":"ok"}; everything else needs a login.
+- name: K9X Sentinel
+  slug: sentinel
+  description: Reads new AI-security research every morning, checks it against K9-AIF's defences, and sends the gaps to human review
+  url_prod: https://sentinel.k9x.ai
+  url_local: null
+  repo_url: https://github.com/k9aif/k9x-sentinel
+  health_path: /api/health
+  category: security
