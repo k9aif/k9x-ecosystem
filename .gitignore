@@ -16,3 +16,6 @@ retired_old_k9x_studio/
 
 # local framework clone used by build.sh — not committed
 k9-aif-framework/
+
+# k9x_inspector is its own git repo (k9aif/k9x-inspector)
+k9x_inspector/
