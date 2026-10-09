@@ -94,3 +94,16 @@
   repo_url: https://github.com/k9aif/k9x-sentinel
   health_path: /api/health
   category: security
+
+# K9X Inspector: continuous conformance for K9-AIF solutions (k9-aif >= 1.15
+# k9_inspect rules). inspector.k9x.ai runs the real instance (:8115) with an
+# admin login and a demo login (demo/demo). /api/health is public and returns
+# JSON {"ok":true} (verified 2026-10-09: body is JSON, an unknown /api path is 404).
+- name: K9X Inspector
+  slug: inspector
+  description: Checks K9-AIF solutions against the framework's 28 conformance rules on every push, with a remediation guide
+  url_prod: https://inspector.k9x.ai
+  url_local: http://localhost:8115
+  repo_url: https://github.com/k9aif/k9x-inspector
+  health_path: /api/health
+  category: security
