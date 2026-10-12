@@ -19,3 +19,6 @@ k9-aif-framework/
 
 # k9x_inspector is its own git repo (k9aif/k9x-inspector)
 k9x_inspector/
+
+# k9x_streams is its own git repo
+k9x_streams/
