@@ -119,6 +119,7 @@
   description: Defense Acquisition System — an application built on K9-AIF — governed agents draft acquisition documents, people review and approve
   url_prod: https://das.k9x.ai
   url_local: null
+  repo_url: https://github.com/k9aif/dow-k9x
   health_path: /health
   category: demo
   demo_text: Defense Acquisition System — governed agents draft acquisition documents, people approve each milestone
