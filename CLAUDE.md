@@ -17,6 +17,10 @@ k9x-ecosystem/
 ├── k9x_inspector/    Continuous conformance inspector (own repo): inspects
 │                    K9-AIF solutions on push/schedule with the framework's
 │                    k9_inspect rules; compliance report + guidelines doc.
+├── k9x_streams/      Live, governed context for agents from event streams (own
+│                    repo): reference model on the K9-AIF context fabric.
+├── k9x_deploy/       TODO (own repo, private): deployment requirements → sized
+│                    deployment architecture, manifests, ADRs.
 ├── k9x_coe/          Center of Excellence playbook — how to run an Agentic AI
 │                    architecture practice; not runnable code.
 ├── deployment/       Shared deployment scripts across ecosystem projects.

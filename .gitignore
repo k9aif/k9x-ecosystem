@@ -22,3 +22,6 @@ k9x_inspector/
 
 # k9x_streams is its own git repo
 k9x_streams/
+
+# k9x_deploy is its own git repo (k9aif/k9x-deploy)
+k9x_deploy/
