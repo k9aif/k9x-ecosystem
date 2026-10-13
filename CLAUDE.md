@@ -27,6 +27,30 @@ k9x-ecosystem/
 └── docs/             Ecosystem-level documentation.
 ```
 
+## K9X component catalog — check this before proposing anything new
+
+Every component that exists, live or not. **Before suggesting a new tool, store, page or
+service, check this list** — an existing component may already do it (2026-10-12: a whole
+discussion about where architecture artifacts should live went by before anyone remembered
+repo.k9x.ai). The dashboard's `k9x_dashboard/apps.yaml` is the runtime catalog
+(dashboard.k9x.ai health-checks it); keep both in step when a component is added.
+
+| Component | Folder | Live | What it is |
+|---|---|---|---|
+| K9X Studio | `k9x_studio/` | studio.k9x.ai | Visual K9-AIF builder → scaffold (the only Studio) |
+| K9X Enterprise Continuum | `k9x_continuum/` | continuum.k9x.ai | Governed ABB/SBB catalog: publish, promote, harvest |
+| **K9X Enterprise Repository** | `k9x_enterprise_repository/` | **repo.k9x.ai** | **TOGAF Architecture Repository**: architecture artifacts, Standards Information Base, compliance, dispensations; Wikipedia-style. It records and links to the source repos (GitHub / Bitbucket), not a replacement for them. Home for architecture artifacts (reference models, diagrams, ADRs) |
+| K9X HIL | `~/ai/k9x-hil` (own repo) | hil.k9x.ai | Kafka-native human-in-the-loop case management |
+| K9X Satan | `k9x_satan/` | satan.k9x.ai | Adversarial harness proving k9x Shield holds |
+| K9X Sentinel | `k9x_sentinel/` | sentinel.k9x.ai | Daily AI-security threat watch vs the framework's capability catalog → HIL |
+| K9X Inspector | `k9x_inspector/` (own repo) | inspector.k9x.ai | Conformance rules on every push, remediation guide |
+| K9X Arena | `k9x_arena/` | arena.k9x.ai | LLMs head to head, graded, feeding the model router |
+| K9X Streams | `k9x_streams/` (own repo) | streams.k9x.ai | Live, governed context for agents; reference model on the 1.17 context fabric |
+| K9X Dashboard | `k9x_dashboard/` | dashboard.k9x.ai | Catalog + health of the live components (`apps.yaml`) |
+| K9X Deploy | `k9x_deploy/` (own repo, private) | — (TODO) | Deployment requirements → sized architecture, manifests, Terraform, ADRs |
+| DAS | `~/ai/dow-k9-aif` (k9aif/dow-k9x) | das.k9x.ai | Defense Acquisition System, the flagship application built on K9-AIF |
+| Also here | `k9x_coe/`, `k9x_contexthub/` (parked), `k9x_fleet/` (future), `k9x_testcases/` | — | CoE playbook; parked / future / generator experiments |
+
 ## Framework dependency — read this first
 
 **Read `/Users/ravinatarajan/ai/k9-aif-framework/CLAUDE.md` before writing code in any project here.** It is the single authoritative source for:

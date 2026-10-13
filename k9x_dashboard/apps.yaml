@@ -107,3 +107,12 @@
   repo_url: https://github.com/k9aif/k9x-inspector
   health_path: /api/health
   category: security
+
+- name: K9X Streams
+  slug: streams
+  description: Live, governed context for agents — event streams through a k9x Shield gate into live state, served over MCP
+  url_prod: https://streams.k9x.ai
+  url_local: http://localhost:8016
+  repo_url: https://github.com/k9aif/k9x-streams
+  health_path: /api/health
+  category: platform
