@@ -109,16 +109,6 @@
   health_path: /api/health
   category: security
 
-- name: K9X Streams
-  slug: streams
-  description: Live, governed context for agents — event streams through a k9x Shield gate into live state, served over MCP
-  url_prod: https://streams.k9x.ai
-  url_local: http://localhost:8016
-  repo_url: https://github.com/k9aif/k9x-streams
-  health_path: /api/health
-  category: demo
-  demo_text: Live demo of k9x Origin — live state, agent simulator, threat simulator
-
 # Demos section: entries with category: demo appear only there (K9X Streams is
 # the demo of k9x Origin, which is built into the framework -- not a product).
 # demo_text, when set, replaces description on the demo card.
@@ -132,3 +122,13 @@
   health_path: /health
   category: demo
   demo_text: Defense Acquisition System — governed agents draft acquisition documents, people approve each milestone
+
+- name: K9X Streams
+  slug: streams
+  description: Live, governed context for agents — event streams through a k9x Shield gate into live state, served over MCP
+  url_prod: https://streams.k9x.ai
+  url_local: http://localhost:8016
+  repo_url: https://github.com/k9aif/k9x-streams
+  health_path: /api/health
+  category: demo
+  demo_text: Live demo of k9x Origin — live state, agent simulator, threat simulator
