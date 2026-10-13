@@ -6,6 +6,8 @@ Never a proxy -- this app never calls another app's write endpoints and
 never embeds another app's UI. See dashboard_plan.md for the full design.
 """
 
+import hashlib
+import re
 import sys
 from pathlib import Path
 
@@ -13,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -53,10 +55,22 @@ def gpu_telemetry():
     return get_gpu_telemetry()
 
 
+def _versioned(match: re.Match) -> str:
+    """/static/app.js -> /static/app.js?v=<content hash>, so a changed file gets a new URL."""
+    path = match.group(1)
+    f = _STATIC / path
+    v = hashlib.sha256(f.read_bytes()).hexdigest()[:10] if f.is_file() else "0"
+    return f"/static/{path}?v={v}"
+
+
 @app.get("/{full_path:path}")
 def serve_ui(full_path: str):
+    # Static asset URLs are stamped with a content hash on every page load:
+    # browsers never keep an old app.js/app.css after a deploy, and nobody has
+    # to bump a version by hand.
     if _INDEX.exists():
-        return FileResponse(str(_INDEX))
+        html = re.sub(r"/static/([\w./-]+\.(?:js|css))", _versioned, _INDEX.read_text())
+        return HTMLResponse(html, headers={"Cache-Control": "no-cache"})
     return {"error": "webui not found"}
 
 
