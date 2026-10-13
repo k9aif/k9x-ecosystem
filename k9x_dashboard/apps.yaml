@@ -116,13 +116,12 @@
   url_local: http://localhost:8016
   repo_url: https://github.com/k9aif/k9x-streams
   health_path: /api/health
-  category: platform
-  demo: true
+  category: demo
   demo_text: Live demo of k9x Origin — live state, agent simulator, threat simulator
 
-# Demos section: entries with category: demo appear only there; demo: true
-# also lists an ecosystem entry there (Streams is both). demo_text, when set,
-# replaces description on the demo card.
+# Demos section: entries with category: demo appear only there (K9X Streams is
+# the demo of k9x Origin, which is built into the framework -- not a product).
+# demo_text, when set, replaces description on the demo card.
 # DAS: /health returns real JSON ({"status":"ok","service":"das",...}) and an
 # unknown path is 404 (verified 2026-10-13), so the probe is trustworthy.
 - name: DAS
