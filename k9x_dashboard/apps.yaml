@@ -5,7 +5,8 @@
 # Only the 5 products Ravi confirmed as "live ecosystem" (2026-09-21) are
 # listed here for v1. Other real apps (k9chat, EOC, DAS, k9x_testcases)
 # exist but don't have confirmed production subdomains/local ports yet --
-# add them once verified rather than guessing.
+# add them once verified rather than guessing. (DAS since added, 2026-10-13,
+# under category: demo.)
 #
 # Known issue, not fixed here (out of scope for this dashboard): HIL's
 # main.py hardcodes port 8086 regardless of its own .env's REPO_PORT, and
@@ -116,3 +117,19 @@
   repo_url: https://github.com/k9aif/k9x-streams
   health_path: /api/health
   category: platform
+  demo: true
+  demo_text: Live demo of k9x Origin — live state, agent simulator, threat simulator
+
+# Demos section: entries with category: demo appear only there; demo: true
+# also lists an ecosystem entry there (Streams is both). demo_text, when set,
+# replaces description on the demo card.
+# DAS: /health returns real JSON ({"status":"ok","service":"das",...}) and an
+# unknown path is 404 (verified 2026-10-13), so the probe is trustworthy.
+- name: DAS
+  slug: das
+  description: Defense Acquisition System — an application built on K9-AIF — governed agents draft acquisition documents, people review and approve
+  url_prod: https://das.k9x.ai
+  url_local: null
+  health_path: /health
+  category: demo
+  demo_text: Defense Acquisition System — governed agents draft acquisition documents, people approve each milestone

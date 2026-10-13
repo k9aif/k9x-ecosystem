@@ -8,8 +8,17 @@ function appUrl(app) {
   return app.url_prod || app.url_local || null;
 }
 
+// apps.yaml: category "demo" -> Demos only; demo: true -> also listed under Demos.
 function renderCatalog(apps) {
-  const el = document.getElementById("catalog-grid");
+  renderGrid("catalog-grid", apps.filter((a) => a.category !== "demo"));
+  const demos = apps.filter((a) => a.category === "demo" || a.demo)
+    .sort((a, b) => (b.category === "demo") - (a.category === "demo"))   // demo-only apps first
+    .map((a) => ({ ...a, description: a.demo_text || a.description }));
+  renderGrid("demo-grid", demos, { up: "Live" });
+}
+
+function renderGrid(id, apps, labels = {}) {
+  const el = document.getElementById(id);
   if (!apps.length) {
     el.innerHTML = `<p class="muted">No applications configured.</p>`;
     return;
@@ -30,7 +39,7 @@ function renderCatalog(apps) {
         </div>
         <div class="app-card-desc">${app.description || ""}</div>
         <div class="app-card-footer">
-          <span class="status-label">${repoOnly ? "run locally" : app.status}</span>
+          <span class="status-label">${repoOnly ? "run locally" : (labels[app.status] || app.status)}</span>
           ${linkHtml}
         </div>
       </div>
@@ -168,8 +177,10 @@ async function refreshCatalog() {
     const hilApp = catalogRes.apps.find((a) => a.slug === "hil");
     window.__K9X_HIL_URL__ = hilApp ? (hilApp.url_prod || hilApp.url_local || "") : "";
   } catch (e) {
-    document.getElementById("catalog-grid").innerHTML =
-      `<p class="muted">Failed to load catalog: ${e.message}</p>`;
+    for (const id of ["catalog-grid", "demo-grid"]) {
+      document.getElementById(id).innerHTML =
+        `<p class="muted">Failed to load catalog: ${e.message}</p>`;
+    }
   }
 }
 
