@@ -96,6 +96,17 @@
   health_path: /api/health
   category: security
 
+# K9X Newswatch (2026-10-17): public site, /api/health returns JSON {"ok": true, ...} (verified by body, not
+# just status). Private repo, so no repo_url.
+- name: K9X Newswatch
+  slug: newswatch
+  description: What shipped in your AI stack, and what to check: vendor releases and docs, verified against the source, scored on one governance rubric
+  url_prod: https://newswatch.k9x.ai
+  url_local: http://localhost:8116
+  repo_url: null
+  health_path: /api/health
+  category: security
+
 # K9X Inspector: continuous conformance for K9-AIF solutions (k9-aif >= 1.15
 # k9_inspect rules). inspector.k9x.ai runs the real instance (:8115) with an
 # admin login and a demo login (demo/demo). /api/health is public and returns

@@ -43,6 +43,7 @@ repo.k9x.ai). The dashboard's `k9x_dashboard/apps.yaml` is the runtime catalog
 | K9X HIL | `~/ai/k9x-hil` (own repo) | hil.k9x.ai | Kafka-native human-in-the-loop case management |
 | K9X Satan | `k9x_satan/` | satan.k9x.ai | Adversarial harness proving k9x Shield holds |
 | K9X Sentinel | `k9x_sentinel/` | sentinel.k9x.ai | Daily AI-security threat watch vs the framework's capability catalog → HIL |
+| K9X Newswatch | `~/ai/k9x-newswatch` (own repo, private) | newswatch.k9x.ai | Vendor-neutral AI governance briefing: what shipped in each vendor's stack and what to check; verified, unattended, per-stack email |
 | K9X Inspector | `k9x_inspector/` (own repo) | inspector.k9x.ai | Conformance rules on every push, remediation guide |
 | K9X Arena | `k9x_arena/` | arena.k9x.ai | LLMs head to head, graded, feeding the model router |
 | K9X Streams | `k9x_streams/` (own repo) | streams.k9x.ai | Live, governed context for agents; reference model on the 1.17 context fabric |
