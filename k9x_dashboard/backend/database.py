@@ -57,3 +57,13 @@ def hil_reachable() -> bool:
         return True
     except Exception:
         return False
+
+
+def postgres_reachable() -> bool:
+    """The shared PostgreSQL server itself (the rack's database unit): one round trip, no schema needed."""
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        return True
+    except Exception:
+        return False

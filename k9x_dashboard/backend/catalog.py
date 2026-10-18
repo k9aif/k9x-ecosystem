@@ -39,6 +39,25 @@ def _probe(url: str, health_path: str, timeout: float = 3.0) -> str:
         return "down"
 
 
+def _probe_internal(kind: str) -> str:
+    """'postgres': SELECT 1 on the shared server. 'mcp': the MCP server answers HTTP at MCP_SERVER_URL (a
+    streamable-HTTP endpoint answers a bare GET with 4xx: that still means it is up; no answer or 5xx is down).
+    Not configured: unknown."""
+    import os
+    if kind == "postgres":
+        from backend.database import postgres_reachable
+        return "up" if postgres_reachable() else "down"
+    if kind == "mcp":
+        url = os.getenv("MCP_SERVER_URL", "").strip()
+        if not url:
+            return "unknown"
+        try:
+            return "up" if requests.get(url, timeout=3.0).status_code < 500 else "down"
+        except Exception:
+            return "down"
+    return "unknown"
+
+
 def get_catalog_with_status() -> List[Dict[str, Any]]:
     now = time.monotonic()
     if _cache["data"] is not None and (now - _cache["ts"]) < _CACHE_TTL:
@@ -50,7 +69,12 @@ def get_catalog_with_status() -> List[Dict[str, Any]]:
         # Prefer prod (the real, publicly reachable instance) for the
         # status dot; fall back to local if prod isn't configured.
         probe_url = app.get("url_prod") or app.get("url_local")
-        if app.get("repo_url") and not app.get("url_prod"):
+        if app.get("probe"):
+            # Internal infrastructure (database, MCP server): checked from here, on the intranet; its address
+            # stays in .env and never reaches the page.
+            status = _probe_internal(app["probe"])
+            app = {k: v for k, v in app.items() if k not in ("url_prod", "url_local")}
+        elif app.get("repo_url") and not app.get("url_prod"):
             # Download-and-run tool: nothing hosted to probe (a url_local on
             # the dashboard's own host says nothing about the viewer's machine).
             status = "repo"

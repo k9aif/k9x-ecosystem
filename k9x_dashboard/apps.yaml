@@ -92,6 +92,16 @@
   demo_text: Defense Acquisition System — governed agents draft acquisition documents, people approve each milestone
   column: 1
 
+# PostgreSQL (internal): the shared database server (HIL, Newswatch, Sentinel, ... each in its own schema).
+# probe: postgres -> SELECT 1 over the dashboard's own connection (POSTGRES_* in .env). No public address.
+- name: PostgreSQL
+  slug: postgres
+  description: Shared database server; every K9X component keeps its data in its own schema
+  plate: internal · database
+  probe: postgres
+  category: infrastructure
+  column: 1
+
 # K9X Inspector: continuous conformance for K9-AIF solutions (k9-aif >= 1.15
 # k9_inspect rules). inspector.k9x.ai runs the real instance (:8115) with an
 # admin login and a demo login (demo/demo). /api/health is public and returns
@@ -168,4 +178,14 @@
   health_path: /api/health
   category: demo
   demo_text: Live demo of k9x Origin — live state, agent simulator, threat simulator
+  column: 2
+
+# MCP server (internal): k9x_mcp_server, streamable HTTP, intranet only by design (no auth). probe: mcp -> an HTTP
+# answer from MCP_SERVER_URL (.env; unset shows unknown). Its address is never put on the page or in this file.
+- name: K9X MCP Server
+  slug: mcp
+  description: Model Context Protocol tools for agents (streamable HTTP), intranet only
+  plate: internal · MCP
+  probe: mcp
+  category: infrastructure
   column: 2

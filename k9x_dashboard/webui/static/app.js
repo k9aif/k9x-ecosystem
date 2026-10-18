@@ -13,6 +13,7 @@ function esc(s) {
 }
 
 function host(app) {
+  if (app.plate) return app.plate;            // internal units: a role label, never an address
   const u = app.url_prod || app.url_local;
   try { return u ? new URL(u).host : app.slug; } catch (e) { return app.slug; }
 }
@@ -20,7 +21,7 @@ function host(app) {
 // One slim 1U server per component: LED, name and hostname plate, a one-line description, activity lights, buttons.
 function unit(app) {
   const repoOnly = app.status === "repo";
-  const url = repoOnly ? null : appUrl(app);
+  const url = repoOnly || app.probe ? null : appUrl(app);
   const state = repoOnly ? "run locally" : app.status === "up" ? "online" : app.status === "down" ? "down" : "unknown";
   const btns = [
     url ? `<a class="btn go" href="${esc(url)}" target="_blank" rel="noopener">Open</a>` : "",
@@ -37,7 +38,7 @@ function unit(app) {
           <div class="desc" title="${esc(desc)}">${esc(desc)}</div>
         </div>
         <div class="bays3" aria-hidden="true"><i></i><i></i><i></i></div>
-        <div class="btns">${btns || `<span class="muted">no URL</span>`}</div>
+        <div class="btns">${btns || (app.probe ? `<span class="intl">INTERNAL</span>` : `<span class="muted">no URL</span>`)}</div>
       </div>
       <div class="ear"></div>
     </section>`;
