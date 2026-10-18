@@ -18,6 +18,12 @@ function host(app) {
   try { return u ? new URL(u).host : app.slug; } catch (e) { return app.slug; }
 }
 
+// A drive-activity light with its own random rhythm, so no two lights (or servers) flicker in step.
+function activity() {
+  const dur = (0.9 + Math.random() * 2.6).toFixed(2), delay = (-Math.random() * 4).toFixed(2);
+  return `<i style="--dur:${dur}s;--delay:${delay}s"></i>`;
+}
+
 // One slim 1U server per component: LED, name and hostname plate, a one-line description, activity lights, buttons.
 function unit(app) {
   const repoOnly = app.status === "repo";
@@ -37,7 +43,7 @@ function unit(app) {
           <div class="line1"><span class="name">${esc(app.name)}</span><span class="plate">${esc(host(app))}</span></div>
           <div class="desc" title="${esc(desc)}">${esc(desc)}</div>
         </div>
-        <div class="bays3" aria-hidden="true"><i></i><i></i><i></i></div>
+        <div class="bays3" aria-hidden="true">${activity()}${activity()}${activity()}</div>
         <div class="btns">${btns || (app.probe ? `<span class="intl">INTERNAL</span>` : `<span class="muted">no URL</span>`)}</div>
       </div>
       <div class="ear"></div>

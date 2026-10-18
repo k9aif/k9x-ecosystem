@@ -80,8 +80,12 @@ a { color: var(--accent); text-decoration: none; }
 .bays3 { display: flex; gap: 3px; flex: none; }
 .bays3 i { width: 14px; height: 30px; border-radius: 2px; background: linear-gradient(180deg, #2f343c, #1d2026); border: 1px solid #0d1014; position: relative; }
 .bays3 i::after { content: ""; position: absolute; left: 50%; top: 4px; width: 3px; height: 3px; margin-left: -1.5px; border-radius: 50%; background: #1c3a26; }
-.unit.up .bays3 i::after { background: var(--up); box-shadow: 0 0 4px var(--up); animation: blink 2.1s infinite; }
-.unit.up .bays3 i:nth-child(2)::after { animation-delay: .7s; } .unit.up .bays3 i:nth-child(3)::after { animation-delay: 1.3s; }
+.unit.up .bays3 i::after { background: var(--up); box-shadow: 0 0 4px var(--up);
+  animation: disk var(--dur, 2s) steps(1, end) var(--delay, 0s) infinite; }
+/* disk activity: bursts and pauses, not a metronome */
+@keyframes disk { 0% { opacity: 1; } 7% { opacity: .15; } 11% { opacity: 1; } 19% { opacity: .2; } 23% { opacity: 1; }
+                  41% { opacity: 1; } 44% { opacity: .1; } 58% { opacity: .1; } 61% { opacity: 1; } 70% { opacity: .25; }
+                  73% { opacity: 1; } 100% { opacity: 1; } }
 .btns { display: flex; gap: 4px; flex: none; }
 .btn { display: inline-flex; align-items: center; justify-content: center; padding: 4px 9px; border-radius: 4px; font-size: 11.5px; font-weight: 700;
        color: #dfe6f1; text-decoration: none; white-space: nowrap; background: linear-gradient(180deg, #3b424d, #2a3038); border: 1px solid #0f1216; }
