@@ -8,13 +8,6 @@ function appUrl(app) {
   return app.url_prod || app.url_local || null;
 }
 
-const GROUPS = [
-  ["platform", "PLATFORM", "build, catalog, record, review"],
-  ["security", "SECURITY & GOVERNANCE", "attack, watch, inspect, brief"],
-  ["evaluation", "EVALUATION", "models head to head"],
-  ["demo", "LIVE DEMOS", "applications built on K9-AIF"],
-];
-
 function esc(s) {
   return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
@@ -53,11 +46,13 @@ function unit(app) {
 function renderCatalog(apps) {
   const el = document.getElementById("rack-units");
   if (!apps.length) { el.innerHTML = `<p class="muted pad">No applications configured.</p>`; return; }
-  const known = GROUPS.map((g) => g[0]);
-  const groups = GROUPS.map(([key, label, sub]) => [label, sub, apps.filter((a) => a.category === key)])
-    .concat([["OTHER", "", apps.filter((a) => !known.includes(a.category))]]);
-  el.innerHTML = groups.filter((g) => g[2].length).map(([label, sub, list]) =>
-    `<div class="patch"><span>${label}</span>${sub ? `<b>${sub}</b>` : ""}</div><div class="grp">${list.map(unit).join("")}</div>`).join("");
+  // apps.yaml decides the layout: `column` (1 left, 2 right), file order top to bottom; no column: the shorter one.
+  const cols = [[], []];
+  apps.forEach((a) => {
+    const c = a.column === 1 || a.column === 2 ? a.column - 1 : (cols[0].length <= cols[1].length ? 0 : 1);
+    cols[c].push(a);
+  });
+  el.innerHTML = cols.map((list) => `<div class="col">${list.map(unit).join("")}</div>`).join("");
   const up = apps.filter((a) => a.status === "up").length, down = apps.filter((a) => a.status === "down").length;
   document.getElementById("rack-summary").innerHTML =
     `<b>${apps.length}</b> components · <b>${up}</b> online${down ? ` · <b style="color:var(--down)">${down} down</b>` : ""}`;

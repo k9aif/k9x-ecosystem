@@ -38,7 +38,7 @@ a { color: var(--accent); text-decoration: none; }
 .room { padding: 16px 16px 20px; }
 
 /* ── the rack enclosure ── */
-.rack { max-width: 1160px; margin: 0 auto; background: linear-gradient(180deg, #1b1f26, var(--rack));
+.rack { min-width: 0; background: linear-gradient(180deg, #1b1f26, var(--rack));
         border: 1px solid var(--rack-edge); border-radius: 10px; padding: 0 14px;
         box-shadow: 0 30px 80px rgba(0, 0, 0, .65), inset 0 0 0 1px rgba(255, 255, 255, .03); }
 .rack-top, .rack-foot { height: 24px; display: flex; align-items: center; justify-content: center;
@@ -53,7 +53,6 @@ a { color: var(--accent); text-decoration: none; }
 .bays { flex: 1; min-width: 0; padding: 0 4px; display: flex; flex-direction: column; gap: 5px; }
 
 /* ── a slim 1U server: ears with screws, a metal face; two per shelf ── */
-.grp { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px 8px; }
 .unit { display: flex; align-items: stretch; min-height: 50px; min-width: 0; }
 .ear { width: 12px; flex: none; background: linear-gradient(180deg, #3a404a, #23272e); border: 1px solid #0c0e12; position: relative; }
 .ear::before, .ear::after { content: ""; position: absolute; left: 2.5px; width: 6px; height: 6px; border-radius: 50%;
@@ -97,21 +96,28 @@ a { color: var(--accent); text-decoration: none; }
 .patch::after { content: ""; flex: 1; height: 8px; background: radial-gradient(circle, #20252d 0 2px, transparent 2.5px) 0 0 / 13px 8px; }
 .patch b { font-size: 10.5px; color: #5d6676; font-weight: 600; white-space: nowrap; }
 
-/* ── RTX 5090 host unit (top): one slim row with inline meters ── */
-.unit.host { min-height: 50px; }
-.host .face { background: linear-gradient(180deg, #23301f, #161d14); border-top-color: #4d6a3f; gap: 14px; }
-.host-id { display: flex; align-items: baseline; gap: 10px; flex: none; }
-.host .plate { font-size: 13px; font-weight: 700; color: #d7f5c4; background: #0c120a; border-color: #3b5530; letter-spacing: .08em; padding: 1px 8px; }
-.host-sub { font-size: 11.5px; color: #9fb393; white-space: nowrap; }
-.meters { flex: 1; display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 4px 14px; }
-.meter .k { font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: #9fb393; display: flex; justify-content: space-between; }
-.meter .k b { font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; color: #e5f5da; letter-spacing: 0; font-weight: 600; }
-.meter .bar { height: 5px; margin-top: 3px; border-radius: 2px; background: repeating-linear-gradient(90deg, #0b1209 0 5px, #050805 5px 7px); overflow: hidden; }
+/* ── left pane: the RTX 5090 host, telemetry stacked ── */
+.layout { max-width: 1320px; margin: 0 auto; display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 16px; align-items: start; }
+.hostpane { position: sticky; top: 70px; border-radius: 8px; padding: 14px; border: 1px solid #2f4426;
+            background: linear-gradient(180deg, #1f2b1b, #131911); box-shadow: 0 20px 50px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.04); }
+.hp-head { display: flex; align-items: center; gap: 10px; }
+.hostpane .plate { font-size: 14px; font-weight: 700; color: #d7f5c4; background: #0c120a; border-color: #3b5530; letter-spacing: .08em; padding: 2px 9px; }
+.hp-sub { font-size: 11.5px; color: #9fb393; margin: 6px 0 12px; }
+.hostpane .meters { display: flex; flex-direction: column; gap: 11px; }
+.meter .k { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: #9fb393; display: flex; justify-content: space-between; align-items: baseline; }
+.meter .k b { font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; color: #e5f5da; letter-spacing: 0; font-weight: 600; }
+.meter .bar { height: 6px; margin-top: 4px; border-radius: 2px; background: repeating-linear-gradient(90deg, #0b1209 0 5px, #050805 5px 7px); overflow: hidden; }
 .meter .bar i { display: block; height: 100%; background: repeating-linear-gradient(90deg, #3ee07a 0 5px, transparent 5px 7px); }
 .meter.warn .bar i { background: repeating-linear-gradient(90deg, var(--warn) 0 5px, transparent 5px 7px); }
 .meter.critical .bar i { background: repeating-linear-gradient(90deg, var(--down) 0 5px, transparent 5px 7px); }
 .meter.warn .k b { color: var(--warn); } .meter.critical .k b { color: var(--down); }
 .offline { color: var(--down); font-weight: 600; font-size: 12.5px; }
+.hp-vents { height: 34px; margin-top: 14px; border-radius: 4px; border: 1px solid #0e140c;
+            background: radial-gradient(circle, #060905 0 1.6px, transparent 2px) 0 0 / 7px 7px, #172014; }
+
+/* ── the rack's two columns ── */
+.cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px 8px; }
+.col { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 
 /* ── HIL console (bottom) ── */
 .console-face { grid-template-columns: 1fr; }
@@ -126,12 +132,13 @@ a { color: var(--accent); text-decoration: none; }
 
 .footer { text-align: center; color: var(--text-muted); font-size: 12px; padding: 0 16px 30px; }
 
-/* ── narrow screens: one server per shelf ── */
-@media (max-width: 900px) {
-  .grp { grid-template-columns: 1fr; }
-  .host .face { flex-wrap: wrap; } .meters { flex-basis: 100%; }
+/* ── narrow screens ── */
+@media (max-width: 1000px) {
+  .layout { grid-template-columns: 1fr; }
+  .hostpane { position: static; } .hostpane .meters { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
 }
+@media (max-width: 760px) { .cols { grid-template-columns: 1fr; } }
 @media (max-width: 560px) {
-  .rack { padding: 0 6px; } .rail { width: 8px; } .bays3, .patch b, .host-sub, .header-note { display: none; }
+  .rack { padding: 0 6px; } .rail { width: 8px; } .bays3, .header-note { display: none; }
   .room { padding: 10px 6px 18px; }
 }

@@ -39,6 +39,7 @@ repo.k9x.ai). The dashboard's `k9x_dashboard/apps.yaml` is the runtime catalog
 |---|---|---|---|
 | K9X Studio | `k9x_studio/` | studio.k9x.ai | Visual K9-AIF builder → scaffold (the only Studio) |
 | K9X Enterprise Continuum | `k9x_continuum/` | continuum.k9x.ai | Governed ABB/SBB catalog: publish, promote, harvest |
+| K9X Architecture Graph | `~/ai/k9-aif-graph` (own repo, private) | graph.k9x.ai | Architecture-first graph views of K9-AIF on Neo4j (Cypher views → graph) |
 | **K9X Enterprise Repository** | `k9x_enterprise_repository/` | **repo.k9x.ai** | **TOGAF Architecture Repository**: architecture artifacts, Standards Information Base, compliance, dispensations; Wikipedia-style. It records and links to the source repos (GitHub / Bitbucket), not a replacement for them. Home for architecture artifacts (reference models, diagrams, ADRs) |
 | K9X HIL | `~/ai/k9x-hil` (own repo) | hil.k9x.ai | Kafka-native human-in-the-loop case management |
 | K9X Satan | `k9x_satan/` | satan.k9x.ai | Adversarial harness proving k9x Shield holds |

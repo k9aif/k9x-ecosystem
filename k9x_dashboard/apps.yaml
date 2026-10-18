@@ -26,6 +26,9 @@
 # BODY, not just the status code, before trusting any new entry's
 # health_path -- a catch-all route makes almost any path return 200.
 
+# Rack layout (2026-10-18, Ravi): `column` is the rack column (1 left, 2 right); within a column, file order
+# is top to bottom. Column 1: build and record; column 2: secure, evaluate, inform.
+
 - name: Designer Studio
   slug: studio
   description: Visual drag-and-drop K9-AIF architecture builder — canvas → Generate Scaffold
@@ -33,6 +36,18 @@
   url_local: http://localhost:8090
   health_path: /api/health
   category: platform
+  column: 1
+
+# Architecture Graph (graph.k9x.ai): Neo4j graph views of the K9-AIF architecture. /health returns JSON
+# {"status":"ok"} and an unknown /api path is a JSON 404 (verified 2026-10-18), so the status is real. Private repo.
+- name: Architecture Graph
+  slug: graph
+  description: Architecture-first graph views of K9-AIF on Neo4j; pick a view, explore the components and how they connect
+  url_prod: https://graph.k9x.ai
+  url_local: http://localhost:8082
+  health_path: /health
+  category: platform
+  column: 1
 
 - name: Enterprise Continuum
   slug: continuum
@@ -41,6 +56,7 @@
   url_local: http://localhost:8085
   health_path: /health
   category: platform
+  column: 1
 
 - name: Enterprise Repository
   slug: repo
@@ -49,6 +65,7 @@
   url_local: http://localhost:8086
   health_path: /health
   category: platform
+  column: 1
 
 - name: HIL
   slug: hil
@@ -57,14 +74,60 @@
   url_local: http://localhost:8086
   health_path: /health
   category: platform
+  column: 1
 
-- name: SATAN
+# Demos section: entries with category: demo appear only there (K9X Streams is
+# the demo of k9x Origin, which is built into the framework -- not a product).
+# demo_text, when set, replaces description on the demo card.
+# DAS: /health returns real JSON ({"status":"ok","service":"das",...}) and an
+# unknown path is 404 (verified 2026-10-13), so the probe is trustworthy.
+- name: DAS
+  slug: das
+  description: Defense Acquisition System — an application built on K9-AIF — governed agents draft acquisition documents, people review and approve
+  url_prod: https://das.k9x.ai
+  url_local: null
+  repo_url: https://github.com/k9aif/dow-k9x
+  health_path: /health
+  category: demo
+  demo_text: Defense Acquisition System — governed agents draft acquisition documents, people approve each milestone
+  column: 1
+
+# K9X Inspector: continuous conformance for K9-AIF solutions (k9-aif >= 1.15
+# k9_inspect rules). inspector.k9x.ai runs the real instance (:8115) with an
+# admin login and a demo login (demo/demo). /api/health is public and returns
+# JSON {"ok":true} (verified 2026-10-09: body is JSON, an unknown /api path is 404).
+- name: K9X Inspector
+  slug: inspector
+  description: Checks K9-AIF solutions against the framework's 28 conformance rules on every push, with a remediation guide
+  url_prod: https://inspector.k9x.ai
+  url_local: http://localhost:8115
+  repo_url: https://github.com/k9aif/k9x-inspector
+  health_path: /api/health
+  category: security
+  column: 2
+
+- name: K9X SATAN
   slug: satan
   description: Adversarial red-team harness proving k9x_Shield containment
   url_prod: https://satan.k9x.ai
   url_local: null
   health_path: /api/health
   category: security
+  column: 2
+
+# K9X Sentinel: daily threat watch for K9-AIF. sentinel.k9x.ai runs the real
+# instance (:8114) with an admin login and a read-only demo login (demo/demo)
+# that sees open gaps only as "under private review". /api/health is public
+# and returns {"status":"ok"}; everything else needs a login.
+- name: K9X Sentinel
+  slug: sentinel
+  description: Reads new AI-security research every morning, checks it against K9-AIF's defences, and sends the gaps to human review
+  url_prod: https://sentinel.k9x.ai
+  url_local: null
+  repo_url: https://github.com/k9aif/k9x-sentinel
+  health_path: /api/health
+  category: security
+  column: 2
 
 # repo_url adds a GitHub link to a card. Without url_prod the card is
 # download-and-run only (no probe, no up/down dot, "run locally").
@@ -82,19 +145,7 @@
   repo_url: https://github.com/k9aif/k9x-arena
   health_path: /api/health
   category: evaluation
-
-# K9X Sentinel: daily threat watch for K9-AIF. sentinel.k9x.ai runs the real
-# instance (:8114) with an admin login and a read-only demo login (demo/demo)
-# that sees open gaps only as "under private review". /api/health is public
-# and returns {"status":"ok"}; everything else needs a login.
-- name: K9X Sentinel
-  slug: sentinel
-  description: Reads new AI-security research every morning, checks it against K9-AIF's defences, and sends the gaps to human review
-  url_prod: https://sentinel.k9x.ai
-  url_local: null
-  repo_url: https://github.com/k9aif/k9x-sentinel
-  health_path: /api/health
-  category: security
+  column: 2
 
 # K9X Newswatch (2026-10-17): public site, /api/health returns JSON {"ok": true, ...} (verified by body, not
 # just status). Private repo, so no repo_url.
@@ -106,36 +157,9 @@
   repo_url: null
   health_path: /api/health
   category: security
+  column: 2
 
-# K9X Inspector: continuous conformance for K9-AIF solutions (k9-aif >= 1.15
-# k9_inspect rules). inspector.k9x.ai runs the real instance (:8115) with an
-# admin login and a demo login (demo/demo). /api/health is public and returns
-# JSON {"ok":true} (verified 2026-10-09: body is JSON, an unknown /api path is 404).
-- name: K9X Inspector
-  slug: inspector
-  description: Checks K9-AIF solutions against the framework's 28 conformance rules on every push, with a remediation guide
-  url_prod: https://inspector.k9x.ai
-  url_local: http://localhost:8115
-  repo_url: https://github.com/k9aif/k9x-inspector
-  health_path: /api/health
-  category: security
-
-# Demos section: entries with category: demo appear only there (K9X Streams is
-# the demo of k9x Origin, which is built into the framework -- not a product).
-# demo_text, when set, replaces description on the demo card.
-# DAS: /health returns real JSON ({"status":"ok","service":"das",...}) and an
-# unknown path is 404 (verified 2026-10-13), so the probe is trustworthy.
-- name: DAS
-  slug: das
-  description: Defense Acquisition System — an application built on K9-AIF — governed agents draft acquisition documents, people review and approve
-  url_prod: https://das.k9x.ai
-  url_local: null
-  repo_url: https://github.com/k9aif/dow-k9x
-  health_path: /health
-  category: demo
-  demo_text: Defense Acquisition System — governed agents draft acquisition documents, people approve each milestone
-
-- name: K9X Streams
+- name: K9X Streams · Origin
   slug: streams
   description: Live, governed context for agents — event streams through a k9x Shield gate into live state, served over MCP
   url_prod: https://streams.k9x.ai
@@ -144,3 +168,4 @@
   health_path: /api/health
   category: demo
   demo_text: Live demo of k9x Origin — live state, agent simulator, threat simulator
+  column: 2

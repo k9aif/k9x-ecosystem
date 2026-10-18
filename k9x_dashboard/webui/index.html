@@ -14,38 +14,37 @@
   </header>
 
   <main class="room">
-    <!-- The rack: one 2U server per K9X component, grouped by patch-panel labels.
-         Read-only: links open each component; nothing here acts on them. -->
-    <div class="rack" aria-label="K9X ecosystem rack">
-      <div class="rack-top"><span class="rack-badge">K9X · RACK A1</span></div>
-      <div class="rack-body">
-        <div class="rail left" aria-hidden="true"></div>
-        <div class="bays">
-          <section class="unit host" id="host-unit" aria-label="RTX 5090 host">
-            <div class="ear"></div>
-            <div class="face">
-              <span class="led up" id="host-led"></span>
-              <div class="host-id"><span class="plate">RTX 5090</span><span class="host-sub">GPU host · every K9X component runs here</span></div>
-              <div class="meters" id="gpu-telemetry"><span class="muted">Loading…</span></div>
-            </div>
-            <div class="ear"></div>
-          </section>
+    <div class="layout">
+      <!-- Left pane: the host every component runs on, live telemetry. -->
+      <aside class="hostpane" aria-label="RTX 5090 host">
+        <div class="hp-head"><span class="led up" id="host-led"></span><span class="plate">RTX 5090</span></div>
+        <div class="hp-sub">GPU host · every K9X component runs here</div>
+        <div class="meters" id="gpu-telemetry"><span class="muted">Loading…</span></div>
+        <div class="hp-vents" aria-hidden="true"></div>
+      </aside>
 
-          <div id="rack-units"><p class="muted pad">Loading…</p></div>
-
-          <div class="patch" aria-hidden="true"><span>HIL CONSOLE</span></div>
-          <section class="unit console" aria-label="HIL snapshot">
-            <div class="ear"></div>
-            <div class="face console-face">
-              <div class="screen" id="hil-snapshot"><span class="muted">Loading…</span></div>
-            </div>
-            <div class="ear"></div>
-          </section>
-          <div class="blank" aria-hidden="true"></div>
+      <!-- The rack: two columns of slim 1U servers, one per component (order and column from apps.yaml).
+           Read-only: links open each component; nothing here acts on them. -->
+      <div class="rack" aria-label="K9X ecosystem rack">
+        <div class="rack-top"><span class="rack-badge">K9X · RACK A1</span></div>
+        <div class="rack-body">
+          <div class="rail left" aria-hidden="true"></div>
+          <div class="bays">
+            <div id="rack-units" class="cols"><p class="muted pad">Loading…</p></div>
+            <div class="patch" aria-hidden="true"><span>HIL CONSOLE</span></div>
+            <section class="unit console" aria-label="HIL snapshot">
+              <div class="ear"></div>
+              <div class="face console-face">
+                <div class="screen" id="hil-snapshot"><span class="muted">Loading…</span></div>
+              </div>
+              <div class="ear"></div>
+            </section>
+            <div class="blank" aria-hidden="true"></div>
+          </div>
+          <div class="rail right" aria-hidden="true"></div>
         </div>
-        <div class="rail right" aria-hidden="true"></div>
+        <div class="rack-foot" aria-hidden="true"></div>
       </div>
-      <div class="rack-foot" aria-hidden="true"></div>
     </div>
   </main>
 
