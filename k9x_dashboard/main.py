@@ -23,6 +23,7 @@ load_dotenv()
 from backend.catalog import get_catalog_with_status
 from backend.hil_snapshot import get_hil_snapshot
 from backend.gpu_telemetry import get_telemetry as get_gpu_telemetry
+from backend import cpu_history
 
 _ROOT   = Path(__file__).resolve().parent
 _WEBUI  = _ROOT / "webui"
@@ -48,6 +49,16 @@ def catalog():
 @app.get("/api/hil-snapshot")
 def hil_snapshot():
     return get_hil_snapshot()
+
+
+@app.on_event("startup")
+def _start_sampler() -> None:
+    cpu_history.start()
+
+
+@app.get("/api/cpu-history")
+def cpu_history_api():
+    return cpu_history.history()
 
 
 @app.get("/api/gpu-telemetry")

@@ -157,6 +157,49 @@ function renderGpuTelemetry(d) {
   el.innerHTML = html;
 }
 
+// ── per-core CPU graph: one line per core, last few minutes (Prometheus-style) ──
+function coreColor(i, n) {
+  const hue = Math.round((i / Math.max(1, n)) * 270);           // spread over red..violet, clear of pink
+  return `hsl(${hue}, 85%, 60%)`;
+}
+
+function drawCpu(d) {
+  const cv = document.getElementById("cpu-chart"), foot = document.getElementById("cpu-foot"), avgEl = document.getElementById("cpu-avg");
+  if (!cv) return;
+  if (!d.available || !d.samples || d.samples.length < 2) {
+    foot.textContent = d.available ? "Collecting… (first points in a few seconds)" : "Per-core graph runs on the Linux host";
+    avgEl.textContent = "";
+    return;
+  }
+  const dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
+  if (cv.width !== Math.round(W * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+  const g = cv.getContext("2d");
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, W, H);
+  // grid: 25 / 50 / 75 %
+  g.strokeStyle = "rgba(111, 191, 142, .14)"; g.lineWidth = 1;
+  for (const y of [.25, .5, .75]) { g.beginPath(); g.moveTo(0, Math.round(H * y) + .5); g.lineTo(W, Math.round(H * y) + .5); g.stroke(); }
+  // the box fills while history builds up after a restart, then scrolls with the newest point at the right
+  const s = d.samples, n = d.cores, span = Math.max(1, Math.min(d.window || s.length, Math.max(30, s.length)) - 1);
+  const x = (k) => W - ((s.length - 1 - k) / span) * W;           // newest at the right edge
+  const y = (p) => H - (Math.min(100, Math.max(0, p)) / 100) * (H - 2) - 1;
+  g.lineWidth = 1.1; g.globalAlpha = .9;
+  for (let c = 0; c < n; c++) {
+    g.strokeStyle = coreColor(c, n); g.beginPath();
+    s.forEach((pt, k) => { const px = x(k), py = y(pt.p[c] ?? 0); k ? g.lineTo(px, py) : g.moveTo(px, py); });
+    g.stroke();
+  }
+  g.globalAlpha = 1;
+  const last = s[s.length - 1].p, avg = last.reduce((a, b) => a + b, 0) / last.length, peak = Math.max(...last);
+  avgEl.textContent = `${avg.toFixed(0)}%`;
+  foot.textContent = `${n} cores · peak ${peak.toFixed(0)}% · last ${Math.round(((s.length - 1) * d.interval) / 60) || 1} min`;
+}
+
+async function pollCpu() {
+  try { drawCpu(await api("/api/cpu-history")); }
+  catch (e) { drawCpu({ available: false }); }
+}
+
 async function pollGpuTelemetry() {
   try {
     const d = await api("/api/gpu-telemetry");
@@ -206,6 +249,8 @@ async function init() {
 
   pollGpuTelemetry();
   setInterval(pollGpuTelemetry, 3000);
+  pollCpu();
+  setInterval(pollCpu, 2000);
 }
 
 init();

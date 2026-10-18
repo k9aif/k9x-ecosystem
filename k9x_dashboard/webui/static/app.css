@@ -120,6 +120,13 @@ a { color: var(--accent); text-decoration: none; }
 .hp-vents { height: 34px; margin-top: 14px; border-radius: 4px; border: 1px solid #0e140c;
             background: radial-gradient(circle, #060905 0 1.6px, transparent 2px) 0 0 / 7px 7px, #172014; }
 
+.cpubox { margin-top: 12px; border-radius: 6px; padding: 8px 9px 7px; border: 1px solid #1e2b24; background: #050a08;
+          box-shadow: inset 0 0 24px rgba(62, 224, 122, .05); }
+.cpu-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 10px; letter-spacing: .12em; color: #9fb393; }
+.cpu-head b { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: #e5f5da; letter-spacing: 0; font-weight: 600; }
+#cpu-chart { display: block; width: 100%; height: 140px; margin-top: 6px; }
+.cpu-foot { font-size: 10.5px; color: #6f8a66; margin-top: 4px; }
+
 /* ── the rack's two columns ── */
 .cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px 8px; }
 .col { display: flex; flex-direction: column; gap: 5px; min-width: 0; }

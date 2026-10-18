@@ -21,6 +21,11 @@
         <div class="hp-sub">GPU host · every K9X component runs here</div>
         <div class="meters" id="gpu-telemetry"><span class="muted">Loading…</span></div>
         <div class="hp-vents" aria-hidden="true"></div>
+        <div class="cpubox" aria-label="CPU per core">
+          <div class="cpu-head"><span>CPU · PER CORE</span><b id="cpu-avg"></b></div>
+          <canvas id="cpu-chart" width="400" height="230"></canvas>
+          <div class="cpu-foot" id="cpu-foot">Loading…</div>
+        </div>
       </aside>
 
       <!-- The rack: two columns of slim 1U servers, one per component (order and column from apps.yaml).
