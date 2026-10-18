@@ -24,34 +24,27 @@ function host(app) {
   try { return u ? new URL(u).host : app.slug; } catch (e) { return app.slug; }
 }
 
-// One wide 2U server per component: LED, hostname plate, name, description, drive bays, front-panel buttons.
+// One slim 1U server per component: LED, name and hostname plate, a one-line description, activity lights, buttons.
 function unit(app) {
   const repoOnly = app.status === "repo";
   const url = repoOnly ? null : appUrl(app);
   const state = repoOnly ? "run locally" : app.status === "up" ? "online" : app.status === "down" ? "down" : "unknown";
   const btns = [
     url ? `<a class="btn go" href="${esc(url)}" target="_blank" rel="noopener">Open</a>` : "",
-    app.repo_url ? `<a class="btn" href="${esc(app.repo_url)}" target="_blank" rel="noopener">GitHub</a>` : "",
+    app.repo_url ? `<a class="btn" href="${esc(app.repo_url)}" target="_blank" rel="noopener" title="GitHub">Git</a>` : "",
   ].filter(Boolean).join("");
-  const tag = app.demo && app.category !== "demo" ? `<span class="tag">DEMO</span>` : "";
+  const desc = app.category === "demo" ? (app.demo_text || app.description) : app.description;
   return `
     <section class="unit ${esc(app.status)}" aria-label="${esc(app.name)}: ${state}">
       <div class="ear"></div>
       <div class="face">
-        <div class="ident">
-          <span class="led ${esc(app.status)}" title="${state}"></span>
-          <div class="who">
-            <span class="plate">${esc(host(app))}</span>
-            <div class="name">${esc(app.name)}${tag}</div>
-            <div class="desc">${esc(app.category === "demo" ? (app.demo_text || app.description) : app.description)}</div>
-            <div class="state ${app.status === "down" ? "down" : ""}">${state}</div>
-          </div>
+        <span class="led ${esc(app.status)}" title="${state}"></span>
+        <div class="who">
+          <div class="line1"><span class="name">${esc(app.name)}</span><span class="plate">${esc(host(app))}</span></div>
+          <div class="desc" title="${esc(desc)}">${esc(desc)}</div>
         </div>
-        <div class="panel">
-          <div class="vents"></div>
-          <div class="bays4"><i></i><i></i><i></i><i></i></div>
-          <div class="btns">${btns || `<span class="muted">no URL</span>`}</div>
-        </div>
+        <div class="bays3" aria-hidden="true"><i></i><i></i><i></i></div>
+        <div class="btns">${btns || `<span class="muted">no URL</span>`}</div>
       </div>
       <div class="ear"></div>
     </section>`;
@@ -64,7 +57,7 @@ function renderCatalog(apps) {
   const groups = GROUPS.map(([key, label, sub]) => [label, sub, apps.filter((a) => a.category === key)])
     .concat([["OTHER", "", apps.filter((a) => !known.includes(a.category))]]);
   el.innerHTML = groups.filter((g) => g[2].length).map(([label, sub, list]) =>
-    `<div class="patch"><span>${label}</span>${sub ? `<b>${sub}</b>` : ""}</div>` + list.map(unit).join("")).join("");
+    `<div class="patch"><span>${label}</span>${sub ? `<b>${sub}</b>` : ""}</div><div class="grp">${list.map(unit).join("")}</div>`).join("");
   const up = apps.filter((a) => a.status === "up").length, down = apps.filter((a) => a.status === "down").length;
   document.getElementById("rack-summary").innerHTML =
     `<b>${apps.length}</b> components · <b>${up}</b> online${down ? ` · <b style="color:var(--down)">${down} down</b>` : ""}`;
@@ -131,7 +124,7 @@ function renderHilSnapshot(snapshot) {
 
 function meter(label, value, pct, level) {
   const bar = pct != null ? `<div class="bar"><i style="width:${Math.min(100, Math.max(0, pct))}%"></i></div>` : "";
-  return `<div class="meter ${level || ""}"><div class="k">${label}</div><div class="v">${value}</div>${bar}</div>`;
+  return `<div class="meter ${level || ""}"><div class="k">${label}<b>${value}</b></div>${bar}</div>`;
 }
 
 function renderGpuTelemetry(d) {
