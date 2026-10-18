@@ -14,6 +14,11 @@ RUN pip install --no-cache-dir --upgrade pip \
 
 COPY . .
 
+# A broken apps.yaml would take the whole catalog down (a stray "x: y" in a description did once): the build fails.
+RUN python -c "import yaml; a = yaml.safe_load(open('apps.yaml')); \
+assert isinstance(a, list) and all('name' in x and 'slug' in x for x in a), 'apps.yaml: every entry needs name and slug'; \
+print(f'apps.yaml OK: {len(a)} components')"
+
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 

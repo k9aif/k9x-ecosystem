@@ -8,43 +8,66 @@ function appUrl(app) {
   return app.url_prod || app.url_local || null;
 }
 
-// apps.yaml: category "demo" -> Demos only; demo: true -> also listed under Demos.
-function renderCatalog(apps) {
-  renderGrid("catalog-grid", apps.filter((a) => a.category !== "demo"));
-  const demos = apps.filter((a) => a.category === "demo" || a.demo)
-    .sort((a, b) => (b.category === "demo") - (a.category === "demo"))   // demo-only apps first
-    .map((a) => ({ ...a, description: a.demo_text || a.description }));
-  renderGrid("demo-grid", demos, { up: "Live" });
+const GROUPS = [
+  ["platform", "PLATFORM", "build, catalog, record, review"],
+  ["security", "SECURITY & GOVERNANCE", "attack, watch, inspect, brief"],
+  ["evaluation", "EVALUATION", "models head to head"],
+  ["demo", "LIVE DEMOS", "applications built on K9-AIF"],
+];
+
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
-function renderGrid(id, apps, labels = {}) {
-  const el = document.getElementById(id);
-  if (!apps.length) {
-    el.innerHTML = `<p class="muted">No applications configured.</p>`;
-    return;
-  }
-  el.innerHTML = apps.map((app) => {
-    const repoOnly = app.status === "repo";
-    const url = repoOnly ? null : appUrl(app);
-    const links = [
-      url ? `<a class="open-link" href="${url}" target="_blank" rel="noopener">Open →</a>` : "",
-      app.repo_url ? `<a class="open-link" href="${app.repo_url}" target="_blank" rel="noopener">GitHub →</a>` : "",
-    ].filter(Boolean).join(" ");
-    const linkHtml = links || `<span class="muted">no URL configured</span>`;
-    return `
-      <div class="app-card">
-        <div class="app-card-top">
-          <span class="app-card-name">${app.name}</span>
-          ${repoOnly ? "" : `<span class="status-dot ${app.status}" title="${app.status}"></span>`}
+function host(app) {
+  const u = app.url_prod || app.url_local;
+  try { return u ? new URL(u).host : app.slug; } catch (e) { return app.slug; }
+}
+
+// One wide 2U server per component: LED, hostname plate, name, description, drive bays, front-panel buttons.
+function unit(app) {
+  const repoOnly = app.status === "repo";
+  const url = repoOnly ? null : appUrl(app);
+  const state = repoOnly ? "run locally" : app.status === "up" ? "online" : app.status === "down" ? "down" : "unknown";
+  const btns = [
+    url ? `<a class="btn go" href="${esc(url)}" target="_blank" rel="noopener">Open</a>` : "",
+    app.repo_url ? `<a class="btn" href="${esc(app.repo_url)}" target="_blank" rel="noopener">GitHub</a>` : "",
+  ].filter(Boolean).join("");
+  const tag = app.demo && app.category !== "demo" ? `<span class="tag">DEMO</span>` : "";
+  return `
+    <section class="unit ${esc(app.status)}" aria-label="${esc(app.name)}: ${state}">
+      <div class="ear"></div>
+      <div class="face">
+        <div class="ident">
+          <span class="led ${esc(app.status)}" title="${state}"></span>
+          <div class="who">
+            <span class="plate">${esc(host(app))}</span>
+            <div class="name">${esc(app.name)}${tag}</div>
+            <div class="desc">${esc(app.category === "demo" ? (app.demo_text || app.description) : app.description)}</div>
+            <div class="state ${app.status === "down" ? "down" : ""}">${state}</div>
+          </div>
         </div>
-        <div class="app-card-desc">${app.description || ""}</div>
-        <div class="app-card-footer">
-          <span class="status-label">${repoOnly ? "run locally" : (labels[app.status] || app.status)}</span>
-          ${linkHtml}
+        <div class="panel">
+          <div class="vents"></div>
+          <div class="bays4"><i></i><i></i><i></i><i></i></div>
+          <div class="btns">${btns || `<span class="muted">no URL</span>`}</div>
         </div>
       </div>
-    `;
-  }).join("");
+      <div class="ear"></div>
+    </section>`;
+}
+
+function renderCatalog(apps) {
+  const el = document.getElementById("rack-units");
+  if (!apps.length) { el.innerHTML = `<p class="muted pad">No applications configured.</p>`; return; }
+  const known = GROUPS.map((g) => g[0]);
+  const groups = GROUPS.map(([key, label, sub]) => [label, sub, apps.filter((a) => a.category === key)])
+    .concat([["OTHER", "", apps.filter((a) => !known.includes(a.category))]]);
+  el.innerHTML = groups.filter((g) => g[2].length).map(([label, sub, list]) =>
+    `<div class="patch"><span>${label}</span>${sub ? `<b>${sub}</b>` : ""}</div>` + list.map(unit).join("")).join("");
+  const up = apps.filter((a) => a.status === "up").length, down = apps.filter((a) => a.status === "down").length;
+  document.getElementById("rack-summary").innerHTML =
+    `<b>${apps.length}</b> components · <b>${up}</b> online${down ? ` · <b style="color:var(--down)">${down} down</b>` : ""}`;
 }
 
 function renderHilSnapshot(snapshot) {
@@ -106,54 +129,36 @@ function renderHilSnapshot(snapshot) {
   `;
 }
 
-function telemetryRow(label, value, pct, level) {
-  const cls = level ? ` ${level}` : "";
-  const bar = pct != null
-    ? `<div class="telemetry-bar-track"><div class="telemetry-bar-fill" style="width:${Math.min(100, Math.max(0, pct))}%"></div></div>`
-    : "";
-  return `<div class="telemetry-row${cls}"><div class="label">${label}</div><div class="value">${value}</div>${bar}</div>`;
+function meter(label, value, pct, level) {
+  const bar = pct != null ? `<div class="bar"><i style="width:${Math.min(100, Math.max(0, pct))}%"></i></div>` : "";
+  return `<div class="meter ${level || ""}"><div class="k">${label}</div><div class="v">${value}</div>${bar}</div>`;
 }
 
 function renderGpuTelemetry(d) {
   const el = document.getElementById("gpu-telemetry");
+  const led = document.getElementById("host-led");
   if (!el) return;
-
   if (d.error || d.temperatureC == null) {
-    el.innerHTML = `<div class="telemetry-offline">Telemetry server unreachable</div>`;
+    el.innerHTML = `<div class="offline">Telemetry unreachable</div>`;
+    if (led) led.className = "led down";
     return;
   }
-
-  const limit = d.temp_limit_c ?? 85;
-  const temp = d.temperatureC;
+  if (led) led.className = "led up";
+  const limit = d.temp_limit_c ?? 85, temp = d.temperatureC;
   const tempLevel = temp >= limit ? "critical" : temp >= limit - 10 ? "warn" : "";
-  const gpuLoadLevel = d.gpuUtilizationPct >= 90 ? "warn" : "";
   const memPct = d.memoryTotalMiB ? (d.memoryUsedMiB / d.memoryTotalMiB) * 100 : null;
-
   let html = "";
-  html += telemetryRow("GPU Load", `${d.gpuUtilizationPct ?? "--"}%`, d.gpuUtilizationPct, gpuLoadLevel);
-  html += telemetryRow("GPU Temperature", `${temp}°C`, (temp / limit) * 100, tempLevel);
-  html += telemetryRow(
-    "GPU Memory",
-    `${d.memoryUsedMiB ?? "--"} / ${d.memoryTotalMiB ?? "--"} MiB`,
-    memPct,
-    memPct != null && memPct >= 90 ? "warn" : "",
-  );
-  if (d.cpuLoadPct != null) {
-    html += telemetryRow("CPU Load", `${d.cpuLoadPct}%`, d.cpuLoadPct, d.cpuLoadPct >= 90 ? "warn" : "");
-  }
+  html += meter("GPU load", `${d.gpuUtilizationPct ?? "--"}%`, d.gpuUtilizationPct, d.gpuUtilizationPct >= 90 ? "warn" : "");
+  html += meter("GPU temp", `${temp}°C`, (temp / limit) * 100, tempLevel);
+  html += meter("GPU memory", `${((d.memoryUsedMiB ?? 0) / 1024).toFixed(1)} / ${((d.memoryTotalMiB ?? 0) / 1024).toFixed(0)} GB`,
+                memPct, memPct != null && memPct >= 90 ? "warn" : "");
+  if (d.cpuLoadPct != null) html += meter("CPU load", `${d.cpuLoadPct}%`, d.cpuLoadPct, d.cpuLoadPct >= 90 ? "warn" : "");
   if (d.cpuMemory) {
-    const cpuMemPct = d.cpuMemory.totalMiB ? (d.cpuMemory.usedMiB / d.cpuMemory.totalMiB) * 100 : null;
-    html += telemetryRow(
-      "CPU Memory",
-      `${d.cpuMemory.usedMiB} / ${d.cpuMemory.totalMiB} MiB`,
-      cpuMemPct,
-      cpuMemPct != null && cpuMemPct >= 90 ? "warn" : "",
-    );
+    const p = d.cpuMemory.totalMiB ? (d.cpuMemory.usedMiB / d.cpuMemory.totalMiB) * 100 : null;
+    html += meter("CPU memory", `${(d.cpuMemory.usedMiB / 1024).toFixed(1)} / ${(d.cpuMemory.totalMiB / 1024).toFixed(0)} GB`,
+                  p, p != null && p >= 90 ? "warn" : "");
   }
-  if (d.cpuTempC != null) {
-    html += telemetryRow("CPU Temperature", `${d.cpuTempC}°C`, null, "");
-  }
-
+  if (d.cpuTempC != null) html += meter("CPU temp", `${d.cpuTempC}°C`, null, "");
   el.innerHTML = html;
 }
 
@@ -177,10 +182,7 @@ async function refreshCatalog() {
     const hilApp = catalogRes.apps.find((a) => a.slug === "hil");
     window.__K9X_HIL_URL__ = hilApp ? (hilApp.url_prod || hilApp.url_local || "") : "";
   } catch (e) {
-    for (const id of ["catalog-grid", "demo-grid"]) {
-      document.getElementById(id).innerHTML =
-        `<p class="muted">Failed to load catalog: ${e.message}</p>`;
-    }
+    document.getElementById("rack-units").innerHTML = `<p class="muted pad">Failed to load catalog: ${esc(e.message)}</p>`;
   }
 }
 

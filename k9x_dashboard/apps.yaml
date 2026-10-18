@@ -100,7 +100,7 @@
 # just status). Private repo, so no repo_url.
 - name: K9X Newswatch
   slug: newswatch
-  description: What shipped in your AI stack, and what to check: vendor releases and docs, verified against the source, scored on one governance rubric
+  description: "What shipped in your AI stack, and what to check: SDK and platform releases with practical checks, new models and AI hardware, every item verified against the vendor's own source"
   url_prod: https://newswatch.k9x.ai
   url_local: http://localhost:8116
   repo_url: null

@@ -10,42 +10,52 @@
   <header class="header">
     <a class="header-logo" href="https://k9x.ai">K9X</a>
     <div class="header-title">Ecosystem Dashboard</div>
+    <div class="header-note" id="rack-summary"></div>
   </header>
 
-  <div class="layout">
-    <aside class="sidebar">
-      <h2 class="section-title">Host Machine</h2>
-      <div id="gpu-telemetry">
-        <p class="muted">Loading…</p>
+  <main class="room">
+    <!-- The rack: one 2U server per K9X component, grouped by patch-panel labels.
+         Read-only: links open each component; nothing here acts on them. -->
+    <div class="rack" aria-label="K9X ecosystem rack">
+      <div class="rack-top"><span class="rack-badge">K9X · RACK A1</span></div>
+      <div class="rack-body">
+        <div class="rail left" aria-hidden="true"></div>
+        <div class="bays">
+          <section class="unit host" id="host-unit" aria-label="RTX 5090 host">
+            <div class="ear"></div>
+            <div class="face">
+              <div class="host-id">
+                <span class="led up" id="host-led"></span>
+                <div>
+                  <div class="plate">RTX 5090</div>
+                  <div class="host-sub">GPU host · runs every K9X component · live telemetry</div>
+                </div>
+              </div>
+              <div class="meters" id="gpu-telemetry"><span class="muted">Loading…</span></div>
+            </div>
+            <div class="ear"></div>
+          </section>
+
+          <div id="rack-units"><p class="muted pad">Loading…</p></div>
+
+          <div class="patch" aria-hidden="true"><span>HIL CONSOLE</span></div>
+          <section class="unit console" aria-label="HIL snapshot">
+            <div class="ear"></div>
+            <div class="face console-face">
+              <div class="screen" id="hil-snapshot"><span class="muted">Loading…</span></div>
+            </div>
+            <div class="ear"></div>
+          </section>
+          <div class="blank" aria-hidden="true"></div>
+        </div>
+        <div class="rail right" aria-hidden="true"></div>
       </div>
-    </aside>
-
-    <main class="main">
-      <section>
-        <h2 class="section-title">K9X Ecosystem</h2>
-        <div id="catalog-grid" class="catalog-grid">
-          <p class="muted">Loading…</p>
-        </div>
-      </section>
-
-      <section>
-        <h2 class="section-title">K9X Live Demos</h2>
-        <div id="demo-grid" class="catalog-grid">
-          <p class="muted">Loading…</p>
-        </div>
-      </section>
-
-      <section>
-        <h2 class="section-title">HIL Snapshot</h2>
-        <div id="hil-snapshot">
-          <p class="muted">Loading…</p>
-        </div>
-      </section>
-    </main>
-  </div>
+      <div class="rack-foot" aria-hidden="true"></div>
+    </div>
+  </main>
 
   <footer class="footer">
-    <span>k9x_dashboard — read-only catalog + launch point. No task actions happen here; open HIL directly for that.</span>
+    <span>k9x_dashboard: read-only catalog and launch point. Status lights are live health checks (every 30 s). No actions happen here; open each component directly.</span>
   </footer>
 
   <script src="/static/app.js"></script>
