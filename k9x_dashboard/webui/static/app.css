@@ -132,8 +132,14 @@ a { color: var(--accent); text-decoration: none; }
 .cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px 8px; }
 .col { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 
+/* ── HIL console: a monitor below the racks (a read-out, not a rack server) ── */
+.monitor { border-radius: 10px; padding: 10px 14px 14px; border: 1px solid #22302a;
+           background: linear-gradient(180deg, #161c1a, #0e1312);
+           box-shadow: 0 30px 80px rgba(0, 0, 0, .6), inset 0 1px 0 rgba(255, 255, 255, .03); }
+.monitor-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.monitor-head span:not(.led) { font-size: 11px; font-weight: 800; letter-spacing: .2em; color: #8fb9a0; }
+.monitor-head b { font-size: 11px; font-weight: 500; color: #5f7a6b; }
 /* ── HIL console (bottom) ── */
-.console-face { grid-template-columns: 1fr; }
 .screen { background: #050a08; border: 1px solid #1e2b24; border-radius: 5px; padding: 6px 10px; overflow-x: auto;
           box-shadow: inset 0 0 24px rgba(62, 224, 122, .06); font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; color: #b9f3cf; }
 .hil-table { width: 100%; border-collapse: collapse; }
@@ -141,7 +147,6 @@ a { color: var(--accent); text-decoration: none; }
 .hil-table td { padding: 1px 8px; border-bottom: 1px solid #0f1814; white-space: nowrap; }
 .hil-table a { color: #8fe3ad; }
 .critical-badge { background: var(--down); color: #fff; border-radius: 9px; padding: 0 7px; font-weight: 700; }
-.blank { height: 18px; border-radius: 4px; background: repeating-linear-gradient(90deg, #14171c 0 3px, #191d23 3px 6px); border: 1px solid #0d1014; }
 
 .footer { text-align: center; color: var(--text-muted); font-size: 12px; padding: 0 16px 30px; }
 
