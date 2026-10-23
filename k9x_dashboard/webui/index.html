@@ -30,15 +30,13 @@
 
       <!-- The rack: two columns of slim 1U servers, one per component (order and column from apps.yaml).
            Read-only: links open each component; nothing here acts on them. -->
-      <div class="rack" aria-label="K9X ecosystem rack">
-        <div class="rack-top"><span class="rack-badge">K9X · RACK A1</span></div>
+      <div class="racks">
+      <div class="rack" aria-label="K9X components rack">
+        <div class="rack-top"><span class="rack-badge">K9X · RACK A1 · COMPONENTS</span></div>
         <div class="rack-body">
           <div class="rail left" aria-hidden="true"></div>
           <div class="bays">
             <div id="rack-units" class="cols"><p class="muted pad">Loading…</p></div>
-            <!-- Applications built on the framework (category: solution in apps.yaml), below the components. -->
-            <div class="patch" aria-hidden="true"><span>SOLUTIONS BUILT ON K9-AIF</span></div>
-            <div id="solution-units" class="cols" aria-label="Solutions built on K9-AIF"></div>
             <div class="patch" aria-hidden="true"><span>HIL CONSOLE</span></div>
             <section class="unit console" aria-label="HIL snapshot">
               <div class="ear"></div>
@@ -52,6 +50,20 @@
           <div class="rail right" aria-hidden="true"></div>
         </div>
         <div class="rack-foot" aria-hidden="true"></div>
+      </div>
+
+      <!-- Rack A2: applications built on the framework (category: solution in apps.yaml). -->
+      <div class="rack" aria-label="Solutions built on K9-AIF">
+        <div class="rack-top"><span class="rack-badge">K9X · RACK A2 · SOLUTIONS BUILT ON K9-AIF</span></div>
+        <div class="rack-body">
+          <div class="rail left" aria-hidden="true"></div>
+          <div class="bays">
+            <div id="solution-units" class="cols"><p class="muted pad">Loading…</p></div>
+          </div>
+          <div class="rail right" aria-hidden="true"></div>
+        </div>
+        <div class="rack-foot" aria-hidden="true"></div>
+      </div>
       </div>
     </div>
   </main>

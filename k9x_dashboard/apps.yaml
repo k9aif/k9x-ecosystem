@@ -3,10 +3,10 @@
 # ~10 apps, changes rarely, a live health probe already catches staleness).
 #
 # Only the 5 products Ravi confirmed as "live ecosystem" (2026-09-21) are
-# listed here for v1. Other real apps (k9chat, EOC, DAS, k9x_testcases)
-# exist but don't have confirmed production subdomains/local ports yet --
-# add them once verified rather than guessing. (DAS since added, 2026-10-13,
-# under category: demo.)
+# listed here for v1. Other real apps (EOC, k9x_testcases) exist but don't
+# have confirmed production subdomains/local ports yet -- add them once
+# verified rather than guessing. (Since added: DAS 2026-10-13, K9X Chat
+# 2026-10-22, both in rack A2 as category: solution.)
 #
 # Known issue, not fixed here (out of scope for this dashboard): HIL's
 # main.py hardcodes port 8086 regardless of its own .env's REPO_PORT, and
@@ -76,9 +76,9 @@
   category: platform
   column: 1
 
-# Solutions band: entries with category: solution are applications built ON the framework
-# (DAS, Newswatch, K9X Streams, ...), shown below the components in their own band,
-# "Solutions built on K9-AIF" (Ravi 2026-10-22). Everything else is a K9X component that
+# Rack A2: entries with category: solution are applications built ON the framework
+# (DAS, Newswatch, K9X Streams, K9X Chat), shown in their own rack, "Solutions built on
+# K9-AIF" (Ravi 2026-10-22); rack A1 holds the components. Everything else is a K9X component that
 # supports building solutions. K9X Streams is the reference app for k9x Origin.
 # demo_text, when set, replaces description on a solution's card.
 # DAS: /health returns real JSON ({"status":"ok","service":"das",...}) and an
@@ -181,6 +181,19 @@
   category: solution
   demo_text: Live demo of k9x Origin — live state, agent simulator, threat simulator
   column: 1
+
+# K9X Chat (2026-10-22): chat.k9x.ai, title "K9X Chat: an application built on K9-AIF"; /health returns
+# JSON {"ok": true, ...} (verified). Switch health_path to /api/v1/health once the Ask API is deployed.
+- name: K9X Chat
+  slug: chat
+  description: Ask the framework — answers grounded in K9-AIF and K9X documentation, blogs and videos, every message screened by k9x Shield
+  url_prod: https://chat.k9x.ai
+  url_local: http://localhost:7777
+  repo_url: https://github.com/k9aif/examples
+  health_path: /health
+  category: solution
+  demo_text: Ask the framework — grounded answers from K9-AIF docs, blogs and videos, screened by k9x Shield
+  column: 2
 
 # MCP server (internal): k9x_mcp_server, streamable HTTP, intranet only by design (no auth). probe: mcp -> an HTTP
 # answer from MCP_SERVER_URL (.env; unset shows unknown). Its address is never put on the page or in this file.
