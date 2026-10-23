@@ -33,7 +33,7 @@ function unit(app) {
     url ? `<a class="btn go" href="${esc(url)}" target="_blank" rel="noopener">Open</a>` : "",
     app.repo_url ? `<a class="btn" href="${esc(app.repo_url)}" target="_blank" rel="noopener" title="GitHub">Git</a>` : "",
   ].filter(Boolean).join("");
-  const desc = app.category === "demo" ? (app.demo_text || app.description) : app.description;
+  const desc = app.category === "solution" ? (app.demo_text || app.description) : app.description;
   return `
     <section class="unit ${esc(app.status)}" aria-label="${esc(app.name)}: ${state}">
       <div class="ear"></div>
@@ -50,19 +50,28 @@ function unit(app) {
     </section>`;
 }
 
-function renderCatalog(apps) {
-  const el = document.getElementById("rack-units");
-  if (!apps.length) { el.innerHTML = `<p class="muted pad">No applications configured.</p>`; return; }
-  // apps.yaml decides the layout: `column` (1 left, 2 right), file order top to bottom; no column: the shorter one.
+// apps.yaml decides the layout: `column` (1 left, 2 right), file order top to bottom; no column: the shorter one.
+function twoColumns(list) {
   const cols = [[], []];
-  apps.forEach((a) => {
+  list.forEach((a) => {
     const c = a.column === 1 || a.column === 2 ? a.column - 1 : (cols[0].length <= cols[1].length ? 0 : 1);
     cols[c].push(a);
   });
-  el.innerHTML = cols.map((list) => `<div class="col">${list.map(unit).join("")}</div>`).join("");
+  return cols.map((col) => `<div class="col">${col.map(unit).join("")}</div>`).join("");
+}
+
+function renderCatalog(apps) {
+  const el = document.getElementById("rack-units");
+  if (!apps.length) { el.innerHTML = `<p class="muted pad">No applications configured.</p>`; return; }
+  // K9X components above; applications built on the framework (category: solution) in their own band below.
+  const solutions = apps.filter((a) => a.category === "solution");
+  const components = apps.filter((a) => a.category !== "solution");
+  el.innerHTML = twoColumns(components);
+  document.getElementById("solution-units").innerHTML = twoColumns(solutions);
   const up = apps.filter((a) => a.status === "up").length, down = apps.filter((a) => a.status === "down").length;
   document.getElementById("rack-summary").innerHTML =
-    `<b>${apps.length}</b> components · <b>${up}</b> online${down ? ` · <b style="color:var(--down)">${down} down</b>` : ""}`;
+    `<b>${components.length}</b> components · <b>${solutions.length}</b> solutions · <b>${up}</b> online` +
+    `${down ? ` · <b style="color:var(--down)">${down} down</b>` : ""}`;
 }
 
 function renderHilSnapshot(snapshot) {
