@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""k9x_dashboard -- read-only ecosystem catalog + HIL snapshot + deep links.
+"""k9x_dashboard -- read-only ecosystem catalog + HIL and forum snapshots + deep links.
 
 Same shape as k9x-hil/main.py: FastAPI + static webui, no build step.
 Never a proxy -- this app never calls another app's write endpoints and
@@ -22,6 +22,7 @@ load_dotenv()
 
 from backend.catalog import get_catalog_with_status
 from backend.hil_snapshot import get_hil_snapshot
+from backend.forum_snapshot import get_forum_snapshot
 from backend.gpu_telemetry import get_telemetry as get_gpu_telemetry
 from backend import cpu_history
 
@@ -49,6 +50,11 @@ def catalog():
 @app.get("/api/hil-snapshot")
 def hil_snapshot():
     return get_hil_snapshot()
+
+
+@app.get("/api/forum-snapshot")
+def forum_snapshot():
+    return get_forum_snapshot()
 
 
 @app.on_event("startup")

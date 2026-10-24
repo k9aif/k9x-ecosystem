@@ -69,6 +69,7 @@ a { color: var(--accent); text-decoration: none; }
 .led { width: 9px; height: 9px; border-radius: 50%; flex: none; background: #3a3f47; box-shadow: inset 0 0 2px #000; }
 .led.up { background: var(--up); box-shadow: 0 0 8px var(--up), 0 0 2px var(--up); }   /* steady: healthy; only "down" flashes */
 .led.down { background: var(--down); box-shadow: 0 0 10px var(--down); animation: alarm 1s infinite; }
+.led.warn { background: #f59e0b; box-shadow: 0 0 8px #f59e0b; }   /* steady amber: something waits for a person */
 .led.unknown, .led.repo { background: var(--unknown); box-shadow: 0 0 7px var(--unknown); }
 @keyframes blink { 0%, 92%, 100% { opacity: 1; } 95% { opacity: .35; } }
 @keyframes alarm { 50% { opacity: .35; } }
@@ -146,6 +147,7 @@ a { color: var(--accent); text-decoration: none; }
 .hil-table th { text-align: left; font-weight: 600; color: #6fbf8e; padding: 2px 8px; border-bottom: 1px solid #1e2b24; white-space: nowrap; }
 .hil-table td { padding: 1px 8px; border-bottom: 1px solid #0f1814; white-space: nowrap; }
 .hil-table a { color: #8fe3ad; }
+.monitor-head a { color: #8fe3ad; }
 .critical-badge { background: var(--down); color: #fff; border-radius: 9px; padding: 0 7px; font-weight: 700; }
 
 .footer { text-align: center; color: var(--text-muted); font-size: 12px; padding: 0 16px 30px; }

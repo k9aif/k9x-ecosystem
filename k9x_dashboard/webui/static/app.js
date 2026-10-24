@@ -233,6 +233,51 @@ async function refreshCatalog() {
   }
 }
 
+function renderForumSnapshot(s) {
+  const el = document.getElementById("forum-snapshot");
+  const led = document.getElementById("forum-led");
+  const forum = esc(s.forum_url || "https://forum.k9x.ai");
+  if (!s.reachable && !s.totals) {
+    led.className = "led down";
+    el.innerHTML = `<p class="muted">Forum not reachable right now${s.detail ? ` (${esc(s.detail)})` : ""}. <a href="${forum}" target="_blank" rel="noopener">Open forum →</a></p>`;
+    return;
+  }
+  const t = s.totals;
+  led.className = t.needs_reply ? "led warn" : "led up";
+  document.getElementById("forum-sub").innerHTML =
+    `<a href="${forum}" target="_blank" rel="noopener">forum.k9x.ai</a> · <b>${t.open}</b> open · ` +
+    `<b${t.needs_reply ? ' style="color:var(--down)"' : ""}>${t.needs_reply}</b> waiting for a reply · ` +
+    `<b>${t.unanswered_qa}</b> unanswered Q&amp;A${s.reachable ? "" : " · (stale: GitHub not reachable)"}`;
+  if (!s.threads.length) {
+    el.innerHTML = `<p class="muted">No open threads. <a href="${forum}" target="_blank" rel="noopener">Open forum →</a></p>`;
+    return;
+  }
+  const rows = s.threads.map((th) => `
+      <tr>
+        <td>${th.needs_reply ? '<span class="critical-badge">reply</span>' : "—"}</td>
+        <td><a href="${esc(th.url)}" target="_blank" rel="noopener">${esc(th.title)}</a>${th.unanswered ? ' <span class="muted">(unanswered)</span>' : ""}</td>
+        <td>${esc(th.category)}</td>
+        <td>${esc(th.author)}</td>
+        <td>${th.comments}</td>
+        <td>${esc(th.last_by)}</td>
+        <td>${th.updated_at ? new Date(th.updated_at).toLocaleDateString() : "—"}</td>
+      </tr>`).join("");
+  el.innerHTML = `
+    <table class="hil-table">
+      <thead><tr><th></th><th>Thread</th><th>Category</th><th>Started by</th><th>Replies</th><th>Last post by</th><th>Updated</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+async function refreshForumSnapshot() {
+  try {
+    renderForumSnapshot(await api("/api/forum-snapshot"));
+  } catch (e) {
+    document.getElementById("forum-snapshot").innerHTML =
+      `<p class="muted">Failed to load forum snapshot: ${esc(e.message)}</p>`;
+  }
+}
+
 async function refreshHilSnapshot() {
   try {
     const snapshot = await api("/api/hil-snapshot");
@@ -246,6 +291,7 @@ async function refreshHilSnapshot() {
 async function init() {
   await refreshCatalog();
   await refreshHilSnapshot();
+  await refreshForumSnapshot();
 
   // Auto-refresh -- a card showing Down might actually be back up (or
   // vice versa) since the last load; re-check rather than requiring a
@@ -255,6 +301,8 @@ async function init() {
   // reasonable cadence for task-queue counts (not truly real-time data).
   setInterval(refreshCatalog, 30000);
   setInterval(refreshHilSnapshot, 30000);
+  // The backend caches the forum for 10 minutes (GitHub's anonymous rate limit); 5 minutes here is enough.
+  setInterval(refreshForumSnapshot, 300000);
 
   pollGpuTelemetry();
   setInterval(pollGpuTelemetry, 3000);
