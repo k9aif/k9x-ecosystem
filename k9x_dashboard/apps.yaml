@@ -76,6 +76,18 @@
   category: platform
   column: 1
 
+# K9X Certification (2026-10-24): certification.k9x.ai, courses + K9X Developer Foundation exam. /health is its own
+# route returning JSON {"status":"ok","database":...}; unknown paths return 404 (no catch-all). Private repo.
+- name: K9X Certification
+  slug: certification
+  description: Courses and the K9X Developer Foundation certification for developers adopting K9-AIF
+  url_prod: https://certification.k9x.ai
+  url_local: http://localhost:8117
+  repo_url: null
+  health_path: /health
+  category: learning
+  column: 1
+
 # Rack A2: entries with category: solution are applications built ON the framework
 # (DAS, Newswatch, K9X Streams, K9X Chat), shown in their own rack, "Solutions built on
 # K9-AIF" (Ravi 2026-10-22); rack A1 holds the components. Everything else is a K9X component that
