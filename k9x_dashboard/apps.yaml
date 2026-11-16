@@ -89,7 +89,7 @@
   column: 1
 
 # Rack A2: entries with category: solution are applications built ON the framework
-# (DAS, Newswatch, K9X Streams, K9X Chat), shown in their own rack, "Solutions built on
+# (DAS, Weather Assist (OpenAI), Newswatch, K9X Streams, K9X Chat), shown in their own rack, "Solutions built on
 # K9-AIF" (Ravi 2026-10-22); rack A1 holds the components. Everything else is a K9X component that
 # supports building solutions. K9X Streams is the reference app for k9x Origin.
 # demo_text, when set, replaces description on a solution's card.
@@ -104,6 +104,20 @@
   health_path: /health
   category: solution
   demo_text: Defense Acquisition System — governed agents draft acquisition documents, people approve each milestone
+  column: 1
+
+# Weather Assist (OpenAI) (2026-11-16): openai.k9x.ai, OpenAI Agents SDK agents governed by K9-AIF's adapter.
+# /health is public: 200 {"status": "ok"} when the demo's model server answers, 503 when it doesn't (verified by
+# body); /api/health needs a session.
+- name: Weather Assist (OpenAI)
+  slug: openai
+  description: OpenAI Agents SDK agents governed by K9-AIF. Zero Trust per agent turn, k9x Shield on every tool call, result and reply, the K9 Model Router choosing each model
+  url_prod: https://openai.k9x.ai
+  url_local: http://localhost:8003
+  repo_url: https://github.com/k9aif/examples/tree/main/k9x_openai_bedrock/openai
+  health_path: /health
+  category: solution
+  demo_text: OpenAI agents governed by K9-AIF. Every tool call, result and reply screened by k9x Shield
   column: 1
 
 # PostgreSQL (internal): the shared database server (HIL, Newswatch, Sentinel, ... each in its own schema).
