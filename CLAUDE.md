@@ -47,6 +47,7 @@ repo.k9x.ai). The dashboard's `k9x_dashboard/apps.yaml` is the runtime catalog
 | K9X Newswatch | `~/ai/k9x-newswatch` (own repo, private) | newswatch.k9x.ai | Vendor-neutral AI governance briefing: what shipped in each vendor's stack and what to check; verified, unattended, per-stack email |
 | K9X Inspector | `k9x_inspector/` (own repo) | inspector.k9x.ai | Conformance rules on every push, remediation guide |
 | K9X Arena | `k9x_arena/` | arena.k9x.ai | LLMs head to head, graded, feeding the model router |
+| K9X Untrusted | `~/ai/k9x_untrusted` (own repo, private) | untrusted.k9x.ai | Model-level red team: scheming and evaluation-awareness simulator for untrusted models. Standalone, not built on K9-AIF; never name the tested models in public |
 | K9X Streams | `k9x_streams/` (own repo) | streams.k9x.ai | Live, governed context for agents; reference model on the 1.17 context fabric |
 | K9X Dashboard | `k9x_dashboard/` | dashboard.k9x.ai | Catalog + health of the live components (`apps.yaml`) |
 | K9X Deploy | `k9x_deploy/` (own repo, private) | — (TODO) | Deployment requirements → sized architecture, manifests, Terraform, ADRs |

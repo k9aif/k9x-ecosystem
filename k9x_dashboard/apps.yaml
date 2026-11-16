@@ -230,3 +230,16 @@
   probe: mcp
   category: infrastructure
   column: 2
+
+# K9X Untrusted (2026-11-16): untrusted.k9x.ai, standalone (not built on K9-AIF), so rack A1 with the components.
+# Private repo: no repo_url. /api/health returns JSON {"status":"ok","db":"ok",...} and an unknown path is 404
+# (verified by body). Never name the models it tests on any public page or here.
+- name: K9X Untrusted
+  slug: untrusted
+  description: Model-level red team. Does an untrusted model behave the same when it thinks nobody is watching? A long-running simulator for scheming and evaluation awareness
+  url_prod: https://untrusted.k9x.ai
+  url_local: http://localhost:6670
+  repo_url: null
+  health_path: /api/health
+  category: security
+  column: 2
