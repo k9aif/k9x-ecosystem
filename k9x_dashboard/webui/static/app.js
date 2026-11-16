@@ -291,7 +291,6 @@ async function refreshHilSnapshot() {
 async function init() {
   await refreshCatalog();
   await refreshHilSnapshot();
-  await refreshForumSnapshot();
 
   // Auto-refresh -- a card showing Down might actually be back up (or
   // vice versa) since the last load; re-check rather than requiring a
@@ -301,8 +300,6 @@ async function init() {
   // reasonable cadence for task-queue counts (not truly real-time data).
   setInterval(refreshCatalog, 30000);
   setInterval(refreshHilSnapshot, 30000);
-  // The backend caches the forum for 10 minutes (GitHub's anonymous rate limit); 5 minutes here is enough.
-  setInterval(refreshForumSnapshot, 300000);
 
   pollGpuTelemetry();
   setInterval(pollGpuTelemetry, 3000);
