@@ -243,3 +243,15 @@
   health_path: /api/health
   category: security
   column: 2
+
+# K9X Rules Engine (internal, 2026-11-17): the GoRules agent (k9x-ecosystem/k9x_rules_engine), decision models for
+# K9-AIF rules adapters (GoRulesAdapter). LAN only, no login. probe: rules -> GET {K9X_RULES_ENGINE_URL}/api/health
+# answers "healthy" (.env; unset shows unknown). Its address is never put on the page or in this file.
+- name: K9X Rules Engine
+  slug: rules
+  description: Business rules as reviewed decision models, evaluated for K9-AIF agents (currently GoRules), intranet only
+  plate: internal · rules
+  probe: rules
+  category: infrastructure
+  column: 2
+

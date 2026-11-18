@@ -50,6 +50,7 @@ repo.k9x.ai). The dashboard's `k9x_dashboard/apps.yaml` is the runtime catalog
 | K9X Untrusted | `~/ai/k9x_untrusted` (own repo, private) | untrusted.k9x.ai | Model-level red team: scheming and evaluation-awareness simulator for untrusted models. Standalone, not built on K9-AIF; never name the tested models in public |
 | K9X Streams | `k9x_streams/` (own repo) | streams.k9x.ai | Live, governed context for agents; reference model on the 1.17 context fabric |
 | K9X Dashboard | `k9x_dashboard/` | dashboard.k9x.ai | Catalog + health of the live components (`apps.yaml`) |
+| K9X Rules Engine | `k9x_rules_engine/` | — (internal, LAN, port 8130) | Business rules as decision models (currently GoRules agent); K9-AIF calls it through `GoRulesAdapter` |
 | K9X Deploy | `k9x_deploy/` (own repo, private) | — (TODO) | Deployment requirements → sized architecture, manifests, Terraform, ADRs |
 | DAS | `~/ai/dow-k9-aif` (k9aif/dow-k9x) | das.k9x.ai | Defense Acquisition System, the flagship application built on K9-AIF |
 | Also here | `k9x_coe/`, `k9x_contexthub/` (parked), `k9x_fleet/` (future), `k9x_testcases/` | — | CoE playbook; parked / future / generator experiments |

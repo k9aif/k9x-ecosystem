@@ -40,7 +40,8 @@ def _probe(url: str, health_path: str, timeout: float = 3.0) -> str:
 
 
 def _probe_internal(kind: str) -> str:
-    """'postgres': SELECT 1 on the shared server. 'mcp': the MCP server answers HTTP at MCP_SERVER_URL (a
+    """'postgres': SELECT 1 on the shared server. 'rules': the rules engine's /api/health says "healthy"
+    (K9X_RULES_ENGINE_URL). 'mcp': the MCP server answers HTTP at MCP_SERVER_URL (a
     streamable-HTTP endpoint answers a bare GET with 4xx: that still means it is up; no answer or 5xx is down).
     Not configured: unknown."""
     import os
@@ -53,6 +54,15 @@ def _probe_internal(kind: str) -> str:
             return "unknown"
         try:
             return "up" if requests.get(url, timeout=3.0).status_code < 500 else "down"
+        except Exception:
+            return "down"
+    if kind == "rules":
+        url = os.getenv("K9X_RULES_ENGINE_URL", "").strip()
+        if not url:
+            return "unknown"
+        try:
+            resp = requests.get(url.rstrip("/") + "/api/health", timeout=3.0)
+            return "up" if resp.status_code == 200 and "healthy" in resp.text else "down"
         except Exception:
             return "down"
     return "unknown"
