@@ -1,0 +1,93 @@
+{
+  "contentType": "application/vnd.gorules.decision",
+  "nodes": [
+    {
+      "id": "request",
+      "type": "inputNode",
+      "name": "Invoice",
+      "position": { "x": 80, "y": 200 }
+    },
+    {
+      "id": "approval-table",
+      "type": "decisionTableNode",
+      "name": "Invoice approval (first match wins)",
+      "position": { "x": 380, "y": 200 },
+      "content": {
+        "hitPolicy": "first",
+        "inputs": [
+          { "id": "in-vendor", "name": "Vendor status", "field": "vendor_status" },
+          { "id": "in-duplicate", "name": "Duplicate invoice", "field": "duplicate" },
+          { "id": "in-bank", "name": "Bank account changed", "field": "bank_changed" },
+          { "id": "in-po", "name": "PO matched", "field": "po_matched" },
+          { "id": "in-amount", "name": "Amount (USD)", "field": "amount" }
+        ],
+        "outputs": [
+          { "id": "out-decision", "name": "Decision", "field": "decision" },
+          { "id": "out-role", "name": "Approver role", "field": "approver_role" },
+          { "id": "out-rule", "name": "Rule", "field": "rule" },
+          { "id": "out-reason", "name": "Reason", "field": "reason" }
+        ],
+        "rules": [
+          {
+            "_id": "blocked-vendor",
+            "in-vendor": "\"blocked\"", "in-duplicate": "", "in-bank": "", "in-po": "", "in-amount": "",
+            "out-decision": "\"reject\"", "out-role": "\"\"", "out-rule": "\"AP-01\"",
+            "out-reason": "\"Vendor is blocked: the invoice is rejected\""
+          },
+          {
+            "_id": "duplicate",
+            "in-vendor": "", "in-duplicate": "true", "in-bank": "", "in-po": "", "in-amount": "",
+            "out-decision": "\"reject\"", "out-role": "\"\"", "out-rule": "\"AP-02\"",
+            "out-reason": "\"Invoice already paid or already submitted: rejected as a duplicate\""
+          },
+          {
+            "_id": "high-value",
+            "in-vendor": "", "in-duplicate": "", "in-bank": "", "in-po": "", "in-amount": "> 100000",
+            "out-decision": "\"needs_approval\"", "out-role": "\"manager\"", "out-rule": "\"AP-03\"",
+            "out-reason": "\"Invoice over $100,000: a manager approves it in K9X HIL\""
+          },
+          {
+            "_id": "bank-changed",
+            "in-vendor": "", "in-duplicate": "", "in-bank": "true", "in-po": "", "in-amount": "",
+            "out-decision": "\"needs_approval\"", "out-role": "\"manager\"", "out-rule": "\"AP-04\"",
+            "out-reason": "\"The vendor's bank account changed recently (payment-diversion risk): a manager approves it\""
+          },
+          {
+            "_id": "new-vendor",
+            "in-vendor": "\"new\"", "in-duplicate": "", "in-bank": "", "in-po": "", "in-amount": "",
+            "out-decision": "\"needs_approval\"", "out-role": "\"worker\"", "out-rule": "\"AP-05\"",
+            "out-reason": "\"First invoice from a new vendor: a person approves it in K9X HIL\""
+          },
+          {
+            "_id": "no-po-match",
+            "in-vendor": "", "in-duplicate": "", "in-bank": "", "in-po": "false", "in-amount": "",
+            "out-decision": "\"needs_approval\"", "out-role": "\"worker\"", "out-rule": "\"AP-06\"",
+            "out-reason": "\"Invoice doesn't match a purchase order: a person approves it in K9X HIL\""
+          },
+          {
+            "_id": "over-limit",
+            "in-vendor": "", "in-duplicate": "", "in-bank": "", "in-po": "", "in-amount": "> 15000",
+            "out-decision": "\"needs_approval\"", "out-role": "\"worker\"", "out-rule": "\"AP-07\"",
+            "out-reason": "\"Invoice over $15,000: a person approves it in K9X HIL\""
+          },
+          {
+            "_id": "within-limit",
+            "in-vendor": "", "in-duplicate": "", "in-bank": "", "in-po": "", "in-amount": "",
+            "out-decision": "\"auto_pay\"", "out-role": "\"\"", "out-rule": "\"AP-08\"",
+            "out-reason": "\"Approved vendor, PO matched, within the $15,000 auto-pay limit: paid automatically\""
+          }
+        ]
+      }
+    },
+    {
+      "id": "response",
+      "type": "outputNode",
+      "name": "Decision",
+      "position": { "x": 700, "y": 200 }
+    }
+  ],
+  "edges": [
+    { "id": "e1", "sourceId": "request", "targetId": "approval-table", "type": "edge" },
+    { "id": "e2", "sourceId": "approval-table", "targetId": "response", "type": "edge" }
+  ]
+}
