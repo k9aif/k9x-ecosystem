@@ -17,7 +17,7 @@
 
 set -euo pipefail
 
-IMAGE="gorules/agent:latest"
+IMAGE="docker.io/gorules/agent:latest"   # full name: podman here has no short-name search registries
 CONTAINER="gorules-agent"
 HOST_PORT="${HOST_PORT:-8130}"
 RULES_DIR="${RULES_DIR:-$HOME/containers/volumes/rules}"

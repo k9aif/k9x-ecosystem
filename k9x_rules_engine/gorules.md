@@ -10,7 +10,7 @@ sudo podman run -d \
   -e PROVIDER__ROOT_DIR=/data \
   -v /home/ravinata/containers/volumes/rules:/data:ro \
   --restart=unless-stopped \
-  gorules/agent:latest
+  docker.io/gorules/agent:latest
 ```
 
 Host port 8130, not 8080: PlantUML uses 8080 on this host.
