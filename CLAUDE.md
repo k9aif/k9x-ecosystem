@@ -55,6 +55,23 @@ repo.k9x.ai). The dashboard's `k9x_dashboard/apps.yaml` is the runtime catalog
 | DAS | `~/ai/dow-k9-aif` (k9aif/dow-k9x) | das.k9x.ai | Defense Acquisition System, the flagship application built on K9-AIF |
 | Also here | `k9x_coe/`, `k9x_contexthub/` (parked), `k9x_fleet/` (future), `k9x_testcases/` | — | CoE playbook; parked / future / generator experiments |
 
+## Version display and updates (pattern, reference: K9X Inspector 1.2.0)
+
+Every hosted component should say what is running and update itself the same way. Copy
+`k9x_inspector` (`inspector/updates.py`, `ubuntu/update.sh`, `ubuntu/build-run.sh`, `web/about.html`):
+
+- **About** (public) and `/api/health`: version (`VERSION` file), build commit + time (build-args;
+  the image has no `.git`), installed k9-aif vs latest on PyPI.
+- **Update button** (any signed-in user): idempotent, pull-based. The container only writes
+  `runtime/update/request.json`, and only when something is newer; a systemd path unit on the host
+  (`build-run.sh install-updater`) runs `update.sh`: re-check, `git pull --ff-only`, build, restart,
+  health check, roll back to `:previous`. Outbound only; nothing reaches into the host. Never pip,
+  git or podman from inside the container, and never an inbound trigger.
+- The pip layer's cache is keyed on the latest k9-aif version (`--build-arg K9AIF_LATEST`), so a
+  rebuild picks up a new framework release. Without it a cached layer kept inspector.k9x.ai on
+  1.18.1 while it required 1.26.1.
+- A `.containerignore` keeps `.env` and `runtime/` out of the image.
+
 ## Framework dependency — read this first
 
 **Read `/Users/ravinatarajan/ai/k9-aif-framework/CLAUDE.md` before writing code in any project here.** It is the single authoritative source for:
